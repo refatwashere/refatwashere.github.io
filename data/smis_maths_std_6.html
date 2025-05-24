@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STD VI Mathematics - Final Term Examination</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Application Structure Plan: The SPA will feature a main header with exam details (School, Title, Session, Subject, Duration, Total Marks). Below this, a tab-based navigation system will allow users to switch between "Section A: Numbers, Ratios & Rates", "Section B: Geometry - Angles & Polygons", and "Section C: Problem Solving & Advanced Geometry". Each tab will display the respective questions from the worksheet. Each question will be clearly presented with its number, full text, any sub-parts, and allocated marks. For questions that originally included images (e.g., geometry diagrams), descriptive textual placeholders will be used. A simple bar chart will visualize the total marks allocated to each section. This structure was chosen because it directly mirrors the organization of the provided math worksheet, making navigation intuitive for students and teachers. The tabs allow users to focus on one section at a time, reducing cognitive load. The chart provides a quick overview of the exam's structure.
+    New Feature: An "Explain Question" button is added to each question. Clicking this button opens a modal displaying an AI-generated explanation of the question's concepts and solution steps. This enhances the learning experience by providing on-demand tutoring. -->
+    <!-- Visualization & Content Choices:
+        - Header (Exam Details): Goal: Inform. Presentation: Static HTML text (h1, p). Interaction: None. Justification: Provides essential context about the exam. Library: HTML/Tailwind.
+        - Instructions: Goal: Inform. Presentation: Static HTML text (ul, li). Interaction: None. Justification: Provides guidance on how to approach the exam. Library: HTML/Tailwind.
+        - Section Tabs (A, B, C): Goal: Organize/Navigate. Presentation: HTML buttons styled as tabs. Interaction: Click to switch active tab and displayed content. JS for managing active state and content visibility. Justification: Allows users to easily move between different parts of the exam, reflecting the source document's structure. Library: HTML/Tailwind, JS.
+        - Questions (Number, Text, Marks, Sub-parts): Goal: Inform/Present Problem. Presentation: Structured HTML (divs for each question, p for text, span for marks, ul/li for sub-parts). Mathematical notation rendered as plain text. Image placeholders: Descriptive text like "(Image: Triangle ABC with specific angles/lines)". Interaction: None beyond reading. Justification: Clear and direct presentation of each exam problem as it appears in the worksheet. Library: HTML/Tailwind.
+        - Marks Distribution Chart: Goal: Compare/Inform. Presentation: Chart.js Bar Chart (rendered on a Canvas element within a styled container). Data: Marks per section. Interaction: Hover for tooltips (default Chart.js behavior). Justification: Provides a visual summary of the exam's weighting across sections. Library: Chart.js, HTML/Tailwind for container.
+        - New Feature: Explain Question Button: Goal: Inform/Support Learning. Presentation: HTML button. Interaction: Click to trigger an LLM call via Gemini API and display explanation in a modal. Justification: Provides on-demand, context-sensitive guidance for solving problems, enhancing student understanding. Library: HTML/Tailwind, JS, Gemini API.
+        - Explanation Modal: Goal: Inform. Presentation: HTML div styled as a modal. Interaction: Close button. Justification: Provides a clear, focused display area for the AI-generated explanation without disrupting the main content flow. Library: HTML/Tailwind, JS.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        /* Ensure Tailwind's Inter font is loaded if not default */
+        @import url('https://rsms.me/inter/inter.css');
+        html { font-family: 'Inter', sans-serif; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700 antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-sky-700">ST. Mary's International School</h1>
+            <p class="text-xl sm:text-2xl text-sky-600 mt-1">Final Term Examination</p>
+            <p class="text-lg text-slate-600">Session 2024-2025</p>
+            <p class="text-lg font-semibold text-slate-600">STD VI Mathematics</p>
+            <div class="flex justify-center space-x-4 mt-2 text-sm text-slate-500">
+                <span>Duration: 2 hours</span>
+                <span>Total Marks: 60</span>
+            </div>
+        </header>
+
+        <div class="mb-6 p-4 bg-sky-100 border border-sky-200 rounded-lg text-sm text-sky-700">
+            <p class="font-semibold">Welcome to the Interactive Math Worksheet!</p>
+            <p>This application allows you to explore the STD VI Mathematics Final Term Examination. You can navigate through different sections using the tabs below. Each section contains a set of questions as they appear on the exam paper. At the end, a chart shows the mark distribution per section.</p>
+        </div>
+
+        <div class="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <h2 class="text-lg font-semibold text-amber-700 mb-2">Instructions:</h2>
+            <ul class="list-disc list-inside text-sm text-amber-600 space-y-1">
+                <li>Answer all questions.</li>
+                <li>Show all your work clearly (on your own paper).</li>
+                <li>Units must be stated where appropriate.</li>
+            </ul>
+        </div>
+
+        <div class="mb-6 flex flex-wrap border-b border-slate-300">
+            <button class="tab-button py-2 px-4 sm:py-3 sm:px-6 text-sm sm:text-base font-medium text-center text-sky-700 bg-slate-200 rounded-t-lg hover:bg-slate-300 focus:outline-none active" data-tab="sectionA">Section A</button>
+            <button class="tab-button py-2 px-4 sm:py-3 sm:px-6 text-sm sm:text-base font-medium text-center text-sky-700 bg-slate-200 rounded-t-lg hover:bg-slate-300 focus:outline-none" data-tab="sectionB">Section B</button>
+            <button class="tab-button py-2 px-4 sm:py-3 sm:px-6 text-sm sm:text-base font-medium text-center text-sky-700 bg-slate-200 rounded-t-lg hover:bg-slate-300 focus:outline-none" data-tab="sectionC">Section C</button>
+            <button class="tab-button py-2 px-4 sm:py-3 sm:px-6 text-sm sm:text-base font-medium text-center text-sky-700 bg-slate-200 rounded-t-lg hover:bg-slate-300 focus:outline-none" data-tab="marksDistribution">Marks Distribution</button>
+        </div>
+
+        <div id="tabContentContainer">
+            <div id="sectionA" class="tab-content active">
+                <h2 class="text-2xl font-semibold text-sky-700 mb-4">Section A: Numbers, Ratios & Rates (20 Marks)</h2>
+                <div class="space-y-6">
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="A1">
+                        <p class="font-semibold">1. Simplify each of the following ratios:</p>
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                            <li>(a) 2.5 kg : 750 g <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(b) 0.64 : 0.96 <span class="text-xs text-slate-500">(1 mark)</span></li>
+                            <li>(c) 3 1/4 : 1 2/3 <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(d) 720 ml : 1.5 l : 240 ml <span class="text-xs text-slate-500">(2 marks)</span></li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="A2">
+                        <p class="font-semibold">2. Express each of the following in km/h:</p>
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                            <li>(a) 12.6 m/min <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(b) 280 m/s <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(c) 360 m/min <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(d) 180 cm/s <span class="text-xs text-slate-500">(2 marks)</span></li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="A3">
+                        <p class="font-semibold">3. Given that (3x)/4 = (5y)/7, find the ratio of x:y. <span class="text-xs text-slate-500">(2 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="A4">
+                        <p class="font-semibold">4. There are 18 boys and 22 girls in a school basketball team. Find the ratio of:</p>
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                            <li>(i) the number of boys to the number of girls, <span class="text-xs text-slate-500">(1 mark)</span></li>
+                            <li>(ii) the number of girls to the total number of players in the team. <span class="text-xs text-slate-500">(1 mark)</span></li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="A5">
+                        <p class="font-semibold">5. If $155.75 is charged for 725 units of electricity used. Find the cost of one unit of electricity. <span class="text-xs text-slate-500">(2 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="A6">
+                        <p class="font-semibold">6. A high-speed train travels from Town P to Town Q at a speed of 210 km/h. It covers a distance of 630 km. Find the time taken by the train to travel from Town P to Town Q. <span class="text-xs text-slate-500">(3 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sectionB" class="tab-content">
+                <h2 class="text-2xl font-semibold text-sky-700 mb-4">Section B: Geometry - Angles & Polygons (20 Marks)</h2>
+                 <div class="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-md text-xs text-sky-600">
+                    <p>This section involves geometric figures. In an actual exam, diagrams would be provided. Here, textual descriptions or placeholders for these diagrams are used.</p>
+                </div>
+                <div class="space-y-6">
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="B7">
+                        <p class="font-semibold">7. If the sizes of the angles of a triangle are 2x°, 3x° and 7x°. Find the value of x. <span class="text-xs text-slate-500">(3 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="B8">
+                        <p class="font-semibold">8. In the figure below, ABC is a straight line. Given that angle ADB = angle BDC, find:</p>
+                        <p class="text-sm italic my-2 text-slate-500">(Image Placeholder: A straight line ABC. Point D is above AC. Line segment DB divides angle ADC. Angle C of triangle BDC is 25°. AD is perpendicular to AC, forming a right angle at A in triangle ADB.)</p>
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                            <li>(i) angle BDC <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(ii) angle CBD <span class="text-xs text-slate-500">(2 marks)</span></li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="B9">
+                        <p class="font-semibold">9. For each of the following figures, find the value of the unknown.</p>
+                        <ul class="list-none mt-2 space-y-3 text-sm">
+                            <li>
+                                <p>(a) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 9a: Angles around a point. Known angles are 70°, 60°, 120°. The unknown angle is a°.)</p>
+                                <p>Find a°.</p>
+                            </li>
+                            <li>
+                                <p>(b) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 9b: Angles around a point forming a complete circle, divided into three angles: 6b°, 5b°, and one more likely related to 40° and 30° from the original prompt's description "angles 6b°, 5b°, 40° and 30°" - assuming these are parts of the setup. For this question, let's assume three angles at a point: 6b°, 5b°, and 70°.)</p>
+                                <p>Find b° (assuming angles at a point are 6b°, 5b°, 70°).</p>
+                            </li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="B10">
+                        <p class="font-semibold">10. x, y and z are angles on a straight line. Given that x:y:z = 2:3:4, find the value of z. <span class="text-xs text-slate-500">(3 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="B11">
+                        <p class="font-semibold">11. Find the values of the unknowns in each of the following rectangles:</p>
+                         <ul class="list-none mt-2 space-y-3 text-sm">
+                            <li>
+                                <p>(a) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 11a: A rectangle ABCD with diagonal AC. Angle ACB is 62°. Unknown angle is 'a' (likely BAC) and 'b' (likely CAD or related to properties of diagonals/alternate angles). Let's assume 'a' is angle BAC.)</p>
+                                <p>Find angle 'a' (angle BAC).</p>
+                            </li>
+                            <li>
+                                <p>(b) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 11b: A rectangle ABCD. Point E is on AB. Diagonal CE is drawn. Angle BCE is 45°. Angle CED is 85°. Unknowns are 'c' (likely angle AEC or related) and 'd' (likely angle ADE or related). Let's assume 'c' is angle AEC and 'd' is angle ADE.)</p>
+                                <p>Find angle 'c' (angle AEC) and angle 'd' (angle ADE).</p>
+                            </li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sectionC" class="tab-content">
+                <h2 class="text-2xl font-semibold text-sky-700 mb-4">Section C: Problem Solving & Advanced Geometry (20 Marks)</h2>
+                <div class="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-md text-xs text-sky-600">
+                    <p>This section includes word problems and advanced geometry concepts. Diagrams are described for geometry questions.</p>
+                </div>
+                <div class="space-y-6">
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="C12">
+                        <p class="font-semibold">12. Sarah borrows $60,000 from a bank that charges simple interest at a rate of 5% per annum. Find the total amount of money she has to pay the bank at the end of 3 years. <span class="text-xs text-slate-500">(3 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="C13">
+                        <p class="font-semibold">13. Find the sum of the interior angles of the following polygons:</p>
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                            <li>(a) 13-gon <span class="text-xs text-slate-500">(2 marks)</span></li>
+                            <li>(b) 15-gon <span class="text-xs text-slate-500">(2 marks)</span></li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="C14">
+                        <p class="font-semibold">14. The exterior angle of a regular polygon is 36°. Find the number of sides of the polygon. <span class="text-xs text-slate-500">(3 marks)</span></p>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="C15">
+                        <p class="font-semibold">15. Given that AB//CD, find the values of the unknowns in each of the following figures:</p>
+                        <ul class="list-none mt-2 space-y-3 text-sm">
+                            <li>
+                                <p>(a) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 15a: Parallel lines AB and CD intersected by a transversal line. Angles involved: an angle of 145°, unknown angle a°, angle 2b°, an angle of 40°, an angle of 35°. These are likely positioned to test alternate, corresponding, or co-interior angles.)</p>
+                                <p>Find a° and b°.</p>
+                            </li>
+                            <li>
+                                <p>(b) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 15b: Parallel lines AB and CD intersected by a transversal line. Angles involved: angle 3d°, angle 8c°, an angle of 130°. These are likely positioned to test properties of angles formed by parallel lines.)</p>
+                                <p>Find c° and d°.</p>
+                            </li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                     <div class="p-4 bg-white rounded-lg shadow question-card" data-question-id="C16">
+                        <p class="font-semibold">16. In the figure, AB//CD. Find the values of unknowns.</p>
+                        <ul class="list-none mt-2 space-y-3 text-sm">
+                            <li>
+                                <p>(a) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 16a: Parallel lines AB and CD intersected by two transversals forming a shape between them. Angles given are 125° and 85°. Unknowns are a°, b°, c°, d°.)</p>
+                                <p>Find a°, b°, c°, d°.</p>
+                            </li>
+                            <li>
+                                <p>(b) <span class="text-xs text-slate-500">(2 marks for this part)</span></p>
+                                <p class="text-sm italic my-1 text-slate-500">(Image Placeholder for 16b: Parallel lines AB and CD. A Z-shape or F-shape figure is formed by transversals. Angles given are 40° and 30°. Unknowns are e° and f°.)</p>
+                                <p>Find e° and f°.</p>
+                            </li>
+                        </ul>
+                        <button class="explain-button mt-4 px-3 py-1 bg-sky-500 text-white text-xs font-medium rounded-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">Explain Question ✨</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="marksDistribution" class="tab-content">
+                 <h2 class="text-2xl font-semibold text-sky-700 mb-4">Marks Distribution per Section</h2>
+                 <div class="mb-4 p-3 bg-sky-50 border border-sky-100 rounded-md text-sm text-sky-600">
+                    <p>This chart visualizes the total marks allocated to each section of the examination, providing an overview of the exam's structure.</p>
+                </div>
+                <div class="chart-container bg-white p-4 rounded-lg shadow">
+                    <canvas id="marksChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="explanationModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-sky-700">Question Explanation</h3>
+                <button id="closeModal" class="text-slate-500 hover:text-slate-700 text-2xl font-bold">&times;</button>
+            </div>
+            <div id="explanationContent" class="text-sm text-slate-700 mb-4">
+                <div class="flex justify-center items-center h-24">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <p class="text-xs text-slate-500 italic">Powered by Gemini API</p>
+        </div>
+    </div>
+
+    <script>
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const explainButtons = document.querySelectorAll('.explain-button');
+        const explanationModal = document.getElementById('explanationModal');
+        const closeModalButton = document.getElementById('closeModal');
+        const explanationContent = document.getElementById('explanationContent');
+        let marksChartInstance = null;
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('active', 'bg-sky-600', 'text-white');
+                    btn.classList.add('bg-slate-200', 'text-sky-700');
+                });
+                button.classList.add('active', 'bg-sky-600', 'text-white');
+                button.classList.remove('bg-slate-200', 'text-sky-700');
+
+                tabContents.forEach(content => {
+                    if (content.id === targetTab) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+                
+                if (targetTab === 'marksDistribution') {
+                    renderMarksChart();
+                }
+            });
+        });
+        
+        function renderMarksChart() {
+            const chartCanvas = document.getElementById('marksChart');
+            if (!chartCanvas) return;
+            
+            if (marksChartInstance) {
+                marksChartInstance.destroy();
+            }
+
+            const ctx = chartCanvas.getContext('2d');
+            marksChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Section A', 'Section B', 'Section C'],
+                    datasets: [{
+                        label: 'Total Marks',
+                        data: [20, 20, 20],
+                        backgroundColor: [
+                            'rgba(56, 189, 248, 0.6)', // sky-400
+                            'rgba(14, 165, 233, 0.6)', // sky-500
+                            'rgba(2, 132, 199, 0.6)'   // sky-600
+                        ],
+                        borderColor: [
+                            'rgba(56, 189, 248, 1)',
+                            'rgba(14, 165, 233, 1)',
+                            'rgba(2, 132, 199, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Marks'
+                            }
+                        },
+                        x: {
+                             title: {
+                                display: true,
+                                text: 'Sections'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw + ' marks';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Activate the first tab by default
+        document.addEventListener('DOMContentLoaded', () => {
+            if(tabButtons.length > 0) {
+                tabButtons[0].classList.add('active', 'bg-sky-600', 'text-white');
+                tabButtons[0].classList.remove('bg-slate-200', 'text-sky-700');
+            }
+        });
+
+        // Gemini API Integration for Explanations
+        explainButtons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const questionCard = event.target.closest('.question-card');
+                const questionTextElement = questionCard.querySelector('p.font-semibold');
+                const questionUl = questionCard.querySelector('ul');
+
+                let fullQuestionText = questionTextElement ? questionTextElement.innerText : '';
+                if (questionUl) {
+                    fullQuestionText += '\n' + questionUl.innerText;
+                }
+
+                showExplanationModal();
+                explanationContent.innerHTML = '<div class="flex justify-center items-center h-24"><div class="loading-spinner"></div></div>'; // Show loading spinner
+
+                try {
+                    const explanation = await getExplanation(fullQuestionText);
+                    explanationContent.innerHTML = `<p class="whitespace-pre-wrap">${explanation}</p>`;
+                } catch (error) {
+                    console.error('Error fetching explanation:', error);
+                    explanationContent.innerHTML = '<p class="text-red-500">Failed to load explanation. Please try again.</p>';
+                }
+            });
+        });
+
+        closeModalButton.addEventListener('click', () => {
+            hideExplanationModal();
+        });
+
+        explanationModal.addEventListener('click', (event) => {
+            if (event.target === explanationModal) {
+                hideExplanationModal();
+            }
+        });
+
+        function showExplanationModal() {
+            explanationModal.classList.add('show');
+        }
+
+        function hideExplanationModal() {
+            explanationModal.classList.remove('show');
+        }
+
+        async function getExplanation(questionText) {
+            let chatHistory = [];
+            const prompt = `As a mathematics tutor for 6th graders, explain the following problem clearly and provide a step-by-step approach to solve it. Focus on the concepts involved and the method, but *do not give the final numerical answer*. Question: ${questionText}`;
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                return result.candidates[0].content.parts[0].text;
+            } else {
+                throw new Error('Unexpected API response structure or no content.');
+            }
+        }
+    </script>
+
+</body>
+</html>
