@@ -6,8 +6,31 @@
   <title>Robiul Islam Refat | Portfolio</title>
   <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Preloader styles */
+    #preloader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    #preloader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-500">
+
+  <!-- Preloader -->
+  <div id="preloader">
+    <div class="text-teal-500 text-3xl animate-pulse">Loading Refat's World...</div>
+  </div>
 
   <!-- Scroll to Top Button -->
   <button id="scrollTopBtn" class="fixed bottom-6 right-6 bg-teal-500 text-white p-3 rounded-full shadow-lg hover:bg-teal-600 hidden transition">
@@ -15,7 +38,7 @@
   </button>
 
   <!-- Navigation -->
-  <nav class="bg-gray-100 dark:bg-gray-800 shadow">
+  <nav class="bg-gray-100 dark:bg-gray-800 shadow fixed w-full z-10">
     <div class="container mx-auto px-4 py-4 flex justify-between items-center">
       <h1 class="text-2xl font-bold text-teal-500">Refat's Portfolio</h1>
       <div class="space-x-4 flex items-center">
@@ -31,10 +54,10 @@
   </nav>
 
   <!-- Hero Section -->
-  <section class="container mx-auto px-4 py-16 text-center" data-aos="fade-up">
-    <h2 class="text-4xl font-bold mb-4">Hello, I'm Robiul Islam Refat</h2>
-    <p class="text-lg mb-6">A passionate developer crafting innovative digital solutions with creativity and heart.</p>
-    <a href="#projects" class="px-5 py-3 bg-teal-500 text-white rounded hover:bg-teal-600 transition">View My Work</a>
+  <section class="container mx-auto px-4 py-32 text-center" data-aos="zoom-in">
+    <h2 class="text-4xl font-bold mb-4 animate-bounce">Hello, I'm Robiul Islam Refat</h2>
+    <p class="text-lg mb-6 animate-fade-in">A passionate developer crafting innovative digital solutions with creativity and heart.</p>
+    <a href="#projects" class="px-5 py-3 bg-teal-500 text-white rounded hover:bg-teal-600 transition transform hover:scale-105">View My Work</a>
   </section>
 
   <!-- About Section -->
@@ -47,17 +70,17 @@
   <section id="projects" class="container mx-auto px-4 py-16" data-aos="fade-left">
     <h2 class="text-3xl font-bold mb-6 text-center text-teal-400">Projects</h2>
     <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6 transform transition hover:scale-105">
         <h3 class="text-xl font-semibold mb-2">Project One</h3>
         <p class="mb-4">A cool project using React, Tailwind, and innovation.</p>
         <a href="#" class="text-teal-500 hover:underline">View Details →</a>
       </div>
-      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6 transform transition hover:scale-105">
         <h3 class="text-xl font-semibold mb-2">Project Two</h3>
         <p class="mb-4">An amazing app crafted with care and creativity.</p>
         <a href="#" class="text-teal-500 hover:underline">View Details →</a>
       </div>
-      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6 transform transition hover:scale-105">
         <h3 class="text-xl font-semibold mb-2">Project Three</h3>
         <p class="mb-4">A sleek web experience reflecting modern design trends.</p>
         <a href="#" class="text-teal-500 hover:underline">View Details →</a>
@@ -68,22 +91,8 @@
   <!-- Blog Section -->
   <section id="blog" class="container mx-auto px-4 py-16 bg-gray-50 dark:bg-gray-800 rounded" data-aos="fade-up">
     <h2 class="text-3xl font-bold mb-6 text-center text-teal-400">Blog</h2>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
-        <h3 class="text-xl font-semibold mb-2">Understanding Async/Await</h3>
-        <p class="mb-4">A deep dive into JavaScript's asynchronous magic and how to wield it.</p>
-        <a href="#" class="text-teal-500 hover:underline">Read More →</a>
-      </div>
-      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
-        <h3 class="text-xl font-semibold mb-2">CSS Grid vs Flexbox</h3>
-        <p class="mb-4">Choosing the right layout system for your next responsive masterpiece.</p>
-        <a href="#" class="text-teal-500 hover:underline">Read More →</a>
-      </div>
-      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
-        <h3 class="text-xl font-semibold mb-2">Optimizing Web Performance</h3>
-        <p class="mb-4">Simple strategies to make your websites lightning fast and efficient.</p>
-        <a href="#" class="text-teal-500 hover:underline">Read More →</a>
-      </div>
+    <div id="blog-posts" class="grid md:grid-cols-3 gap-8 text-center">
+      <p class="col-span-3 animate-pulse text-teal-500">Loading blog posts...</p>
     </div>
   </section>
 
@@ -94,7 +103,7 @@
       <input type="text" placeholder="Your Name" class="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 focus:outline-none">
       <input type="email" placeholder="Your Email" class="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 focus:outline-none">
       <textarea placeholder="Your Message" rows="4" class="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 focus:outline-none"></textarea>
-      <button type="submit" class="w-full px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 transition">Send Message</button>
+      <button type="submit" class="w-full px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 transition transform hover:scale-105">Send Message</button>
     </form>
   </section>
 
@@ -110,6 +119,12 @@
   <script>
     AOS.init();
 
+    // Preloader
+    window.addEventListener('load', () => {
+      document.getElementById('preloader').classList.add('hidden');
+    });
+
+    // Theme toggle
     const themeToggle = document.getElementById('theme-toggle');
     const themeIcon = document.getElementById('theme-icon');
     const htmlElement = document.documentElement;
@@ -126,6 +141,7 @@
       themeIcon.textContent = '☀️';
     }
 
+    // Scroll to top
     const scrollTopBtn = document.getElementById('scrollTopBtn');
     window.addEventListener('scroll', () => {
       if (window.pageYOffset > 300) {
@@ -137,6 +153,23 @@
     scrollTopBtn.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
+
+    // Simulate blog post loading
+    setTimeout(() => {
+      const blogPosts = [
+        { title: 'Mastering Async/Await', summary: 'A deep dive into JavaScript’s async magic.' },
+        { title: 'Tailwind Dark Mode Tips', summary: 'Make your sites shine in both light and dark themes.' },
+        { title: 'Speeding Up Web Apps', summary: 'Optimizing performance for lightning-fast sites.' }
+      ];
+      const container = document.getElementById('blog-posts');
+      container.innerHTML = '';
+      blogPosts.forEach(post => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-100 dark:bg-gray-700 rounded shadow p-6 transform transition hover:scale-105';
+        div.innerHTML = `<h3 class="text-xl font-semibold mb-2">${post.title}</h3><p class="mb-4">${post.summary}</p><a href="#" class="text-teal-500 hover:underline">Read More →</a>`;
+        container.appendChild(div);
+      });
+    }, 1500);
   </script>
 </body>
 </html>
