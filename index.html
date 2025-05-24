@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Robiul Islam Refat | Portfolio</title>
   <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-500">
 
@@ -18,13 +18,13 @@
   <nav class="bg-gray-100 dark:bg-gray-800 shadow">
     <div class="container mx-auto px-4 py-4 flex justify-between items-center">
       <h1 class="text-2xl font-bold text-teal-500">Refat's Portfolio</h1>
-      <div class="space-x-4">
+      <div class="space-x-4 flex items-center">
         <a href="#about" class="hover:text-teal-400 transition">About</a>
         <a href="#projects" class="hover:text-teal-400 transition">Projects</a>
         <a href="#blog" class="hover:text-teal-400 transition">Blog</a>
         <a href="#contact" class="hover:text-teal-400 transition">Contact</a>
-        <button id="theme-toggle" class="px-3 py-1 bg-teal-500 text-white rounded hover:bg-teal-600 transition">
-          Toggle Theme
+        <button id="theme-toggle" class="ml-2 p-2 rounded-full bg-teal-500 text-white hover:bg-teal-600 transition">
+          <span id="theme-icon">🌙</span>
         </button>
       </div>
     </div>
@@ -38,7 +38,7 @@
   </section>
 
   <!-- About Section -->
-  <section id="about" class="container mx-auto px-4 py-16" data-aos="fade-right">
+  <section id="about" class="container mx-auto px-4 py-16 bg-gray-50 dark:bg-gray-800 rounded" data-aos="fade-right">
     <h2 class="text-3xl font-bold mb-6 text-center text-teal-400">About Me</h2>
     <p class="max-w-2xl mx-auto text-center">I'm Robiul Islam Refat, a developer blending design, logic, and purpose. From front-end finesse to back-end strength, I bring passion and innovation to every line of code.</p>
   </section>
@@ -47,17 +47,17 @@
   <section id="projects" class="container mx-auto px-4 py-16" data-aos="fade-left">
     <h2 class="text-3xl font-bold mb-6 text-center text-teal-400">Projects</h2>
     <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-gray-100 dark:bg-gray-800 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
         <h3 class="text-xl font-semibold mb-2">Project One</h3>
         <p class="mb-4">A cool project using React, Tailwind, and innovation.</p>
         <a href="#" class="text-teal-500 hover:underline">View Details →</a>
       </div>
-      <div class="bg-gray-100 dark:bg-gray-800 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
         <h3 class="text-xl font-semibold mb-2">Project Two</h3>
         <p class="mb-4">An amazing app crafted with care and creativity.</p>
         <a href="#" class="text-teal-500 hover:underline">View Details →</a>
       </div>
-      <div class="bg-gray-100 dark:bg-gray-800 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
         <h3 class="text-xl font-semibold mb-2">Project Three</h3>
         <p class="mb-4">A sleek web experience reflecting modern design trends.</p>
         <a href="#" class="text-teal-500 hover:underline">View Details →</a>
@@ -66,20 +66,20 @@
   </section>
 
   <!-- Blog Section -->
-  <section id="blog" class="container mx-auto px-4 py-16" data-aos="fade-up">
+  <section id="blog" class="container mx-auto px-4 py-16 bg-gray-50 dark:bg-gray-800 rounded" data-aos="fade-up">
     <h2 class="text-3xl font-bold mb-6 text-center text-teal-400">Blog</h2>
     <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-gray-100 dark:bg-gray-800 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
         <h3 class="text-xl font-semibold mb-2">Understanding Async/Await</h3>
         <p class="mb-4">A deep dive into JavaScript's asynchronous magic and how to wield it.</p>
         <a href="#" class="text-teal-500 hover:underline">Read More →</a>
       </div>
-      <div class="bg-gray-100 dark:bg-gray-800 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
         <h3 class="text-xl font-semibold mb-2">CSS Grid vs Flexbox</h3>
         <p class="mb-4">Choosing the right layout system for your next responsive masterpiece.</p>
         <a href="#" class="text-teal-500 hover:underline">Read More →</a>
       </div>
-      <div class="bg-gray-100 dark:bg-gray-800 rounded shadow p-6">
+      <div class="bg-gray-100 dark:bg-gray-700 rounded shadow p-6">
         <h3 class="text-xl font-semibold mb-2">Optimizing Web Performance</h3>
         <p class="mb-4">Simple strategies to make your websites lightning fast and efficient.</p>
         <a href="#" class="text-teal-500 hover:underline">Read More →</a>
@@ -90,7 +90,7 @@
   <!-- Contact Section -->
   <section id="contact" class="container mx-auto px-4 py-16" data-aos="fade-up">
     <h2 class="text-3xl font-bold mb-6 text-center text-teal-400">Contact Me</h2>
-    <form class="max-w-lg mx-auto space-y-4">
+    <form class="max-w-lg mx-auto space-y-4 bg-gray-50 dark:bg-gray-800 p-6 rounded shadow">
       <input type="text" placeholder="Your Name" class="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 focus:outline-none">
       <input type="email" placeholder="Your Email" class="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 focus:outline-none">
       <textarea placeholder="Your Message" rows="4" class="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 focus:outline-none"></textarea>
@@ -111,15 +111,19 @@
     AOS.init();
 
     const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
     const htmlElement = document.documentElement;
 
     themeToggle.addEventListener('click', () => {
       htmlElement.classList.toggle('dark');
-      localStorage.setItem('theme', htmlElement.classList.contains('dark') ? 'dark' : 'light');
+      const isDark = htmlElement.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      themeIcon.textContent = isDark ? '☀️' : '🌙';
     });
 
     if (localStorage.getItem('theme') === 'dark') {
       htmlElement.classList.add('dark');
+      themeIcon.textContent = '☀️';
     }
 
     const scrollTopBtn = document.getElementById('scrollTopBtn');
