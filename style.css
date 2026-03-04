@@ -1,0 +1,103 @@
+/* Reset & Base */
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins', sans-serif; scroll-behavior: smooth; }
+body { background: #fdf6f0; color:#333; line-height:1.6; }
+a { text-decoration:none; color: inherit; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: #111;
+  color: #fff;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  z-index: 1000;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+/* Navigation */
+nav { display:flex; justify-content:space-between; align-items:center; padding:1rem 2rem; background:#ffd6e0; position:sticky; top:0; z-index:100; }
+nav a { margin:0 1rem; font-weight:600; transition:0.3s; }
+nav a:hover { color:#8a3ffc; }
+nav .nav-links { display:flex; flex-wrap:wrap; justify-content:flex-end; }
+
+/* Hero Section */
+.hero { min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; background:linear-gradient(120deg, #fcb69f, #ffdde1); color:#fff; padding:2rem; }
+.hero h1 { font-family:'Pacifico', cursive; font-size:3rem; margin-bottom:1rem; }
+.hero p { font-size:1.3rem; max-width:600px; }
+
+/* Sections */
+section { padding:5rem 2rem; }
+section h2 { font-family:'Pacifico', cursive; font-size:2.5rem; margin-bottom:2rem; color:#8a3ffc; text-align:center; }
+section .content { display:flex; flex-wrap:wrap; gap:2rem; justify-content:center; }
+
+/* Cards */
+.card { background:#fff; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.1); padding:2rem; width:300px; transition:0.3s; }
+.card:hover { transform: translateY(-10px); box-shadow:0 12px 30px rgba(0,0,0,0.2); }
+
+/* Buttons */
+button, .btn { background:#8a3ffc; color:#fff; padding:0.8rem 1.5rem; border:none; border-radius:50px; cursor:pointer; transition:0.3s; }
+button:hover, .btn:hover { background:#ff6f91; }
+
+/* Footer */
+footer { text-align:center; padding:2rem; background:#ffd6e0; margin-top:2rem; font-size:0.9rem; }
+
+/* Responsive */
+@media(max-width:768px){
+    nav { flex-direction:column; align-items:flex-start; gap:0.8rem; }
+    nav .nav-links { width:100%; gap:0.2rem 0.6rem; }
+    nav a { margin:0; }
+    section .content { flex-direction:column; align-items:center; }
+    .hero h1 { font-size:2.2rem; }
+}
+/* --- add to style.css --- */
+/* initial hidden state for sections */
+section { opacity: 0; transform: translateY(30px); transition: all 0.7s ease-out; }
+
+/* active nav link */
+nav a.active { color:#fff; background: rgba(138,63,252,0.15); padding:0.4rem 0.8rem; border-radius:12px; }
+
+/* inputs style in contact form */
+input, textarea { font-family: inherit; font-size:0.95rem; outline:none; }
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid #8a3ffc;
+  outline-offset: 2px;
+}
+
+/* memorial page subtle adjustments */
+nav a { transition: color .25s, background .25s; }
+nav a.active { color:#fff; background: rgba(138,63,252,0.15); padding:0.4rem 0.8rem; border-radius:12px; }
+
+.form-control {
+  width:100%;
+  padding:0.6rem;
+  margin-top:0.5rem;
+  border-radius:8px;
+  border:1px solid #eee;
+}
+
+.status-message {
+  margin-top:0.75rem;
+  font-size:0.9rem;
+  color:#333;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  section {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

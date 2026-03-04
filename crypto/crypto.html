@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-time cryptocurrency tracker with trade journaling, price alerts, and Binance API integration">
+    <meta name="keywords" content="crypto, cryptocurrency, bitcoin, ethereum, trading, price tracker, binance">
+    <meta name="author" content="Crypto Tracker Team">
+    <meta name="theme-color" content="#f5576c">
+
+    <title>Crypto Tracker & Trade Journal v3.1 | Real-time Price Tracking</title>
+
+    <link rel="stylesheet" href="src/css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Crypto Tracker & Trade Journal</h1>
+            <p class="subtitle">Real-time cryptocurrency tracking & analysis</p>
+            <div class="header-controls">
+                <a href="../index.html" class="btn-small" aria-label="Go to home page">Home</a>
+                <button id="themeToggle" class="btn-small" aria-label="Toggle theme">&#x1F319; Dark</button>
+                <button id="settingsBtn" class="btn-small" aria-label="Open settings">&#9881;&#65039; Settings</button>
+            </div>
+        </header>
+
+        <section class="ticker-container" aria-label="Live price ticker">
+            <div class="ticker-wrapper" id="tickerWrapper"></div>
+        </section>
+
+        <nav class="tabs" role="tablist" aria-label="Main navigation">
+            <button class="tab-btn active" data-tab="market" role="tab" aria-selected="true" aria-controls="marketTab" tabindex="0">&#x1F4CA; Market</button>
+            <button class="tab-btn" data-tab="chart" role="tab" aria-selected="false" aria-controls="chartTab" tabindex="-1">&#x1F4C8; Charts</button>
+            <button class="tab-btn" data-tab="journal" role="tab" aria-selected="false" aria-controls="journalTab" tabindex="-1">&#x1F4DD; Journal</button>
+            <button class="tab-btn" data-tab="alerts" role="tab" aria-selected="false" aria-controls="alertsTab" tabindex="-1">&#x1F514; Alerts</button>
+            <button class="tab-btn" data-tab="trading" role="tab" aria-selected="false" aria-controls="tradingTab" tabindex="-1">&#x1F4BC; Trading</button>
+        </nav>
+
+        <main class="main-content">
+            <section id="marketTab" class="tab-content active" role="tabpanel" aria-labelledby="market">
+                <div class="market-controls">
+                    <input type="text" id="searchInput" placeholder="Search cryptocurrencies..." class="search-input" aria-label="Search cryptocurrencies">
+                    <select id="sortSelect" aria-label="Sort cryptocurrencies">
+                        <option value="rank">Sort by Rank</option>
+                        <option value="price">Sort by Price</option>
+                        <option value="change">Sort by 24h Change</option>
+                    </select>
+                    <button id="watchlistToggle" class="btn-small" aria-label="Toggle watchlist filter">&#11088; Watchlist Only</button>
+                </div>
+                <div id="cryptoGrid" class="crypto-grid" role="list" aria-label="Cryptocurrency list"></div>
+            </section>
+
+            <section id="chartTab" class="tab-content" role="tabpanel" aria-labelledby="chart" hidden>
+                <article class="chart-container">
+                    <div class="chart-header">
+                        <h2 id="chartTitle">BTC/USDT Price Chart (5m)</h2>
+                        <div class="chart-controls">
+                            <span id="chartDataSourceBadge" class="chart-source-badge source-loading" role="status" aria-live="polite">Loading</span>
+                            <select id="chartSymbolSelect" class="chart-select" aria-label="Select cryptocurrency"></select>
+                            <select id="chartInterval" class="chart-select" aria-label="Select time interval">
+                                <option value="1m">1 Minute</option>
+                                <option value="5m" selected>5 Minutes</option>
+                                <option value="10m">10 Minutes</option>
+                                <option value="15m">15 Minutes</option>
+                                <option value="30m">30 Minutes</option>
+                                <option value="1h">1 Hour</option>
+                                <option value="4h">4 Hours</option>
+                                <option value="1d">1 Day</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="indicator-legend" aria-label="Indicator legend">
+                        <span class="legend-item legend-candle">Candles</span>
+                        <span class="legend-item legend-ema-fast">EMA 9</span>
+                        <span class="legend-item legend-ema-slow">EMA 21</span>
+                        <span class="legend-item legend-rsi">RSI 14</span>
+                        <span class="legend-item legend-signal-up">Bullish confirmation</span>
+                        <span class="legend-item legend-signal-down">Bearish confirmation</span>
+                    </div>
+                    <canvas id="priceChart" role="img" aria-label="Price chart"></canvas>
+                    <canvas id="rsiChart" role="img" aria-label="RSI chart"></canvas>
+                    <p id="rsiStatus" class="rsi-status" hidden>Insufficient candles for RSI(14).</p>
+                </article>
+            </section>
+
+            <section id="journalTab" class="tab-content" role="tabpanel" aria-labelledby="journal" hidden>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Trade Journal</h2>
+                    <button id="addTradeBtn" class="btn" aria-label="Add new trade">+ Add Trade</button>
+                </div>
+                <div id="tradesList" role="list" aria-label="Trade history"></div>
+                <div id="analytics" aria-label="Trade analytics"></div>
+            </section>
+
+            <section id="alertsTab" class="tab-content" role="tabpanel" aria-labelledby="alerts" hidden>
+                <h2>Price Alerts</h2>
+                <div id="alertsList" role="list" aria-label="Active price alerts"></div>
+            </section>
+
+            <section id="tradingTab" class="tab-content" role="tabpanel" aria-labelledby="trading" hidden>
+                <div class="trading-container">
+                    <div class="trading-header">
+                        <div class="trading-mode-switch">
+                            <button class="mode-btn active" data-mode="spot">Spot</button>
+                            <button class="mode-btn" data-mode="futures">Futures</button>
+                        </div>
+                        <div class="balance-display" id="balanceDisplay"></div>
+                    </div>
+
+                    <div class="trading-grid">
+                        <div class="trading-panel">
+                            <h3>Place Order</h3>
+                            <div class="order-tabs">
+                                <button class="order-tab active" data-order-type="buy">Long</button>
+                                <button class="order-tab" data-order-type="sell">Short</button>
+                            </div>
+                            <form id="orderForm" class="order-form">
+                                <select id="orderSymbol" required>
+                                    <option value="">Select Pair</option>
+                                </select>
+                                <select id="orderType" required>
+                                    <option value="LIMIT">Limit</option>
+                                    <option value="MARKET">Market</option>
+                                </select>
+                                <div id="leverageControl" style="display:none;">
+                                    <label>Leverage: <span id="leverageValue">10</span>x</label>
+                                    <input type="range" id="leverageSlider" min="1" max="125" value="10">
+                                </div>
+                                <input type="number" id="orderPrice" placeholder="Price (USDT)" step="0.01" required>
+                                <input type="number" id="orderQuantity" placeholder="Quantity" step="0.001" required>
+                                <div id="tpslControls" style="display:none;">
+                                    <input type="number" id="takeProfitPrice" placeholder="Take Profit (Optional)" step="0.01">
+                                    <input type="number" id="stopLossPrice" placeholder="Stop Loss (Optional)" step="0.01">
+                                </div>
+                                <div class="order-total" id="orderTotal">Total: $0.00</div>
+                                <button type="submit" class="btn btn-buy" id="orderSubmitBtn">Long</button>
+                            </form>
+                        </div>
+
+                        <div class="trading-panel">
+                            <h3 id="positionsTitle">Portfolio</h3>
+                            <div id="positionsList" class="portfolio-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="trading-panel" style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>Open Orders</h3>
+                            <button id="refreshOrders" class="btn-small">&#x1F504; Refresh</button>
+                        </div>
+                        <div id="openOrdersList" class="orders-list"></div>
+                    </div>
+
+                    <div class="trading-panel" style="margin-top: 20px;">
+                        <h3>Order History</h3>
+                        <div id="orderHistory" class="orders-list"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <aside id="tradeModal" class="modal" role="dialog" aria-labelledby="tradeModalTitle" aria-hidden="true">
+            <div class="modal-content">
+                <button class="close" aria-label="Close modal">&times;</button>
+                <h3 id="tradeModalTitle">Add New Trade</h3>
+                <form id="tradeForm">
+                    <input type="text" id="tradeSymbol" placeholder="Symbol (e.g., BTC)" aria-label="Trade symbol" required>
+                    <select id="tradeType" aria-label="Trade type" required>
+                        <option value="">Select Type</option>
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
+                    <input type="number" id="tradeAmount" placeholder="Amount" step="0.00000001" aria-label="Trade amount" required>
+                    <input type="number" id="tradePrice" placeholder="Price" step="0.01" aria-label="Trade price" required>
+                    <input type="datetime-local" id="tradeDate" aria-label="Trade date" required>
+                    <textarea id="tradeNotes" placeholder="Notes (optional)" aria-label="Trade notes"></textarea>
+                    <button type="submit" class="btn">Add Trade</button>
+                </form>
+            </div>
+        </aside>
+
+        <aside id="settingsModal" class="modal" role="dialog" aria-labelledby="settingsModalTitle" aria-hidden="true">
+            <div class="modal-content">
+                <button class="close" aria-label="Close modal">&times;</button>
+                <h3 id="settingsModalTitle">Settings</h3>
+                <div class="settings-section">
+                    <h4>Binance API Configuration</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 15px;">
+                        Enter your Binance API credentials for real trading features. Leave empty for read-only mode.
+                    </p>
+                    <input type="text" id="apiKey" placeholder="API Key" aria-label="Binance API key" autocomplete="off">
+                    <input type="password" id="apiSecret" placeholder="API Secret" aria-label="Binance API secret" autocomplete="off">
+                    <input type="password" id="backendApiToken" placeholder="Backend API Token (API_TOKEN_CRYPTO)" aria-label="Backend API token" autocomplete="off">
+                    <label style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
+                        <input type="checkbox" id="useTestnet" checked aria-label="Use testnet">
+                        <span>Use Testnet (Recommended for testing)</span>
+                    </label>
+                    <button id="saveSettings" class="btn" aria-label="Save settings">Save Settings</button>
+                    <button id="clearSettings" class="btn" style="background: var(--negative); margin-left: 10px;" aria-label="Clear settings">Clear</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            const script = document.createElement('script');
+            script.src = 'src/js/core/app.js';
+            document.body.appendChild(script);
+        });
+    </script>
+</body>
+</html>

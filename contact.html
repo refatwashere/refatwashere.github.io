@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Refat | Contact</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header>
+<nav aria-label="Primary">
+  <div class="logo"><a href="index.html">Refat</a></div>
+  <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="projects.html">Projects</a>
+      <a href="resources.html">Resources</a>
+      <a href="mom.html">Mom</a>
+      <a href="crypto/crypto.html">Binance Tool</a>
+      <a href="contact.html">Contact</a>
+  </div>
+</nav>
+</header>
+
+<main id="main-content">
+<section class="hero" style="min-height:35vh; padding:2.5rem 2rem;">
+  <h1>Contact</h1>
+  <p style="max-width:700px; margin:0.5rem auto 0;">Want to collaborate, need a worksheet, or want app access? Send a message - I usually reply fast.</p>
+</section>
+
+<section id="contact-form">
+  <h2>Send a Message</h2>
+  <div class="content">
+    <div class="card" style="width:520px; max-width:100%;">
+      <form onsubmit="event.preventDefault(); document.getElementById('contact-status').hidden = false;" novalidate>
+        <label for="name">Name</label><br>
+        <input id="name" name="name" placeholder="Your name" class="form-control" autocomplete="name" required><br><br>
+
+        <label for="email">Email</label><br>
+        <input id="email" name="email" type="email" placeholder="you@example.com" class="form-control" autocomplete="email" required><br><br>
+
+        <label for="message">Message</label><br>
+        <textarea id="message" name="message" rows="6" placeholder="Tell me about your project..." class="form-control" required></textarea><br><br>
+
+        <button type="submit" class="btn">Submit</button>
+        <p id="contact-status" class="status-message" role="status" aria-live="polite" hidden>Thanks. For now, please send details by email to <a href="mailto:rbl.islam.refat2@gmail.com">rbl.islam.refat2@gmail.com</a>.</p>
+        <p class="status-message" style="color:#666;">Direct email: <a href="mailto:rbl.islam.refat2@gmail.com">rbl.islam.refat2@gmail.com</a></p>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  &copy; 2025 Refat.
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
