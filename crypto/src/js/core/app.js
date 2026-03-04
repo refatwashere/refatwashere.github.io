@@ -141,6 +141,12 @@ class CryptoApp {
     this.lastChartDataWarningAt = 0;
     this.lastChartDataWarningMessage = '';
     this.orderSubmitInFlight = false;
+    this.ws = null;
+    this.lastWsTickAt = 0;
+    this.chartSourceState = 'loading';
+    this.chartFallbackRetryBudget = 3;
+    this.chartFallbackRetryDelayMs = 2000;
+    this.chartDegradedTimeoutMs = 12000;
     
     this.init();
   }
@@ -311,12 +317,46 @@ class CryptoApp {
     const stateMap = {
       loading: { text: 'Loading', className: 'source-loading' },
       proxy: { text: 'Proxy', className: 'source-proxy' },
+      degraded: { text: 'Degraded', className: 'source-degraded' },
       fallback: { text: 'Fallback', className: 'source-fallback' },
       unavailable: { text: 'Unavailable', className: 'source-unavailable' }
     };
     const selected = stateMap[state] || stateMap.loading;
     badge.textContent = selected.text;
     badge.className = `chart-source-badge ${selected.className}`;
+    this.chartSourceState = state in stateMap ? state : 'loading';
+  }
+
+  hasUsableIntervalData(symbol, interval, minPoints = 1) {
+    const key = `${symbol}_${interval}`;
+    const data = this.data.intervalData[key];
+    return Array.isArray(data) && data.length >= minPoints;
+  }
+
+  isWebSocketLive(maxAgeMs = 15000) {
+    const socketOpen = this.ws && this.ws.readyState === WebSocket.OPEN;
+    const hasRecentTick = (Date.now() - this.lastWsTickAt) <= maxAgeMs;
+    return Boolean(socketOpen && hasRecentTick);
+  }
+
+  async sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async waitForLiveFallback(symbol, interval, requestNonce) {
+    const startedAt = Date.now();
+    for (let attempt = 0; attempt < this.chartFallbackRetryBudget; attempt += 1) {
+      await this.sleep(this.chartFallbackRetryDelayMs);
+      if (requestNonce !== this.chartFetchNonce) return false;
+
+      if (this.hasUsableIntervalData(symbol, interval, 1)) {
+        return true;
+      }
+      if ((Date.now() - startedAt) >= this.chartDegradedTimeoutMs) {
+        break;
+      }
+    }
+    return false;
   }
 
   calculateEMA(closes, period) {
@@ -661,13 +701,18 @@ class CryptoApp {
       const wsUrl = `${this.WS_URL}?streams=${streams}`;
       console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
+      this.ws = ws;
       
-      ws.onopen = () => console.log('WebSocket connected');
+      ws.onopen = () => {
+        this.lastWsTickAt = Date.now();
+        console.log('WebSocket connected');
+      };
       
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data?.data?.s && data.data.c && data.data.P) {
+            this.lastWsTickAt = Date.now();
             const ticker = data.data;
             const symbol = ticker.s;
             const price = parseFloat(ticker.c);
@@ -688,7 +733,10 @@ class CryptoApp {
         console.error('WebSocket error:', error);
         this.showNotification('Connection error. Retrying...');
       };
-      ws.onclose = () => setTimeout(() => this.connectWebSocket(), 3000);
+      ws.onclose = () => {
+        this.ws = null;
+        setTimeout(() => this.connectWebSocket(), 3000);
+      };
     } catch (error) {
       console.error('WebSocket connection failed:', error);
       setTimeout(() => this.connectWebSocket(), 5000);
@@ -718,7 +766,12 @@ class CryptoApp {
       this.data.intervalData[key].shift();
     }
     
-    if (symbol === this.state.currentChartSymbol) this.updateChart();
+    if (symbol === this.state.currentChartSymbol) {
+      this.updateChart();
+      if (this.chartSourceState === 'degraded' || this.chartSourceState === 'loading') {
+        this.setChartDataSourceState('fallback');
+      }
+    }
   }
   
   updateDisplay() {
@@ -870,19 +923,21 @@ class CryptoApp {
               type: 'line',
               label: 'EMA 9',
               data: [],
-              borderColor: '#4dd0e1',
-              borderWidth: 2,
+              borderColor: '#00d4ff',
+              borderWidth: 2.4,
               pointRadius: 0,
-              tension: 0.25
+              pointHoverRadius: 0,
+              tension: 0.2
             },
             {
               type: 'line',
               label: 'EMA 21',
               data: [],
-              borderColor: '#ffb74d',
-              borderWidth: 2,
+              borderColor: '#ffd166',
+              borderWidth: 2.4,
               pointRadius: 0,
-              tension: 0.25
+              pointHoverRadius: 0,
+              tension: 0.2
             },
             {
               type: 'line',
@@ -891,8 +946,8 @@ class CryptoApp {
               borderColor: '#66bb6a',
               backgroundColor: '#66bb6a',
               showLine: false,
-              pointRadius: 5,
-              pointHoverRadius: 6,
+              pointRadius: 5.5,
+              pointHoverRadius: 7,
               pointStyle: 'triangle',
               pointRotation: 0
             },
@@ -903,8 +958,8 @@ class CryptoApp {
               borderColor: '#ef5350',
               backgroundColor: '#ef5350',
               showLine: false,
-              pointRadius: 5,
-              pointHoverRadius: 6,
+              pointRadius: 5.5,
+              pointHoverRadius: 7,
               pointStyle: 'triangle',
               pointRotation: 180
             }
@@ -914,11 +969,44 @@ class CryptoApp {
           responsive: true,
           maintainAspectRatio: false,
           animation: this.prefersReducedMotion ? false : { duration: 250 },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
           plugins: {
             legend: {
               labels: {
-                color: '#fff',
+                color: '#dbe7ff',
+                boxWidth: 10,
+                boxHeight: 10,
+                usePointStyle: true,
+                pointStyle: 'line',
                 filter: (legendItem) => !['Wick', 'Candle Body'].includes(legendItem.text)
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(12, 16, 26, 0.96)',
+              borderColor: 'rgba(95, 120, 166, 0.45)',
+              borderWidth: 1,
+              titleColor: '#f3f7ff',
+              bodyColor: '#d3ddf5',
+              callbacks: {
+                label: (ctx) => {
+                  const label = ctx.dataset?.label || 'Value';
+                  const raw = ctx.raw;
+                  if (Array.isArray(raw) && raw.length === 2) {
+                    const low = Number(raw[0]);
+                    const high = Number(raw[1]);
+                    if (Number.isFinite(low) && Number.isFinite(high)) {
+                      return `${label}: ${this.formatPriceAxisValue(low)} - ${this.formatPriceAxisValue(high)}`;
+                    }
+                  }
+                  const parsed = Number(ctx.parsed?.y);
+                  if (Number.isFinite(parsed)) {
+                    return `${label}: ${this.formatPriceAxisValue(parsed)}`;
+                  }
+                  return label;
+                }
               }
             },
             lastPriceTag: {
@@ -931,18 +1019,19 @@ class CryptoApp {
           scales: {
             x: {
               ticks: {
-                color: '#a0a0a0',
+                color: '#9ba9c6',
                 maxTicksLimit: 10
               },
-              grid: { color: 'rgba(255, 255, 255, 0.08)' }
+              grid: { color: 'rgba(118, 139, 173, 0.14)' }
             },
             y: {
               position: 'right',
               ticks: {
-                color: '#a0a0a0',
+                color: '#9ba9c6',
+                maxTicksLimit: 8,
                 callback: (value) => this.formatPriceAxisValue(Number(value))
               },
-              grid: { color: 'rgba(255, 255, 255, 0.08)' }
+              grid: { color: 'rgba(118, 139, 173, 0.14)' }
             }
           }
         }
@@ -956,9 +1045,11 @@ class CryptoApp {
             {
               label: 'RSI (14)',
               data: [],
-              borderColor: '#ce93d8',
-              borderWidth: 2,
+              borderColor: '#b794f4',
+              backgroundColor: 'rgba(183, 148, 244, 0.12)',
+              borderWidth: 2.2,
               pointRadius: 0,
+              fill: true,
               tension: 0.2
             },
             {
@@ -985,23 +1076,34 @@ class CryptoApp {
           responsive: true,
           maintainAspectRatio: false,
           animation: this.prefersReducedMotion ? false : { duration: 250 },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
           plugins: {
-            legend: { labels: { color: '#a0a0a0' } },
-            rsiZones: { enabled: true }
+            legend: { labels: { color: '#dbe7ff', boxWidth: 10, boxHeight: 10 } },
+            rsiZones: { enabled: true },
+            tooltip: {
+              backgroundColor: 'rgba(12, 16, 26, 0.96)',
+              borderColor: 'rgba(95, 120, 166, 0.45)',
+              borderWidth: 1,
+              titleColor: '#f3f7ff',
+              bodyColor: '#d3ddf5'
+            }
           },
           scales: {
             x: {
               ticks: {
-                color: '#a0a0a0',
+                color: '#9ba9c6',
                 maxTicksLimit: 10
               },
-              grid: { color: 'rgba(255, 255, 255, 0.08)' }
+              grid: { color: 'rgba(118, 139, 173, 0.14)' }
             },
             y: {
               min: 0,
               max: 100,
-              ticks: { color: '#a0a0a0', stepSize: 10 },
-              grid: { color: 'rgba(255, 255, 255, 0.08)' }
+              ticks: { color: '#9ba9c6', stepSize: 10 },
+              grid: { color: 'rgba(118, 139, 173, 0.14)' }
             }
           }
         }
@@ -1093,7 +1195,11 @@ class CryptoApp {
     const hasRsiData = rsi.some((point) => Number.isFinite(point));
     if (rsiStatus) {
       rsiStatus.hidden = hasRsiData;
-      if (!hasRsiData) rsiStatus.textContent = 'Insufficient candles for RSI(14).';
+      if (!hasRsiData) {
+        const requiredCandles = 15;
+        const haveCandles = history.length;
+        rsiStatus.textContent = `RSI(14) warming up (${haveCandles}/${requiredCandles} candles).`;
+      }
     }
 
     const updateMode = this.prefersReducedMotion ? 'none' : undefined;
@@ -2096,9 +2202,28 @@ class CryptoApp {
         this.updateChart();
         this.setChartDataSourceState('fallback');
         this.showChartDataWarning('Live stream data shown; historical fetch unavailable.');
+      } else if (this.isWebSocketLive()) {
+        this.setChartDataSourceState('degraded');
+        this.showChartDataWarning('Historical fetch failed; waiting for live candles.');
+        const warmed = await this.waitForLiveFallback(symbol, interval, requestNonce);
+        if (requestNonce !== this.chartFetchNonce) {
+          return;
+        }
+        if (warmed) {
+          const warmedData = this.getFallbackIntervalData(symbol, interval);
+          if (warmedData.length > 0) {
+            this.data.intervalData[key] = warmedData;
+            this.updateChart();
+          }
+          this.setChartDataSourceState('fallback');
+          this.showChartDataWarning('Live stream data shown; historical fetch unavailable.');
+        } else {
+          this.setChartDataSourceState('unavailable');
+          this.showChartDataWarning('No historical or live candle data available.');
+        }
       } else {
         this.setChartDataSourceState('unavailable');
-        this.showChartDataWarning('Chart history unavailable. Check backend token/server.');
+        this.showChartDataWarning('No historical or live candle data available.');
       }
     }
   }

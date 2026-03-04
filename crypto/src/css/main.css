@@ -177,23 +177,25 @@ h1 {
 
 /* Charts */
 .chart-container {
-  background: var(--bg-secondary);
+  background: linear-gradient(165deg, rgba(20, 27, 44, 0.92), rgba(17, 23, 37, 0.88));
   backdrop-filter: blur(10px);
   border-radius: var(--border-radius);
-  padding: 20px;
+  padding: 22px;
   margin-top: 30px;
-  min-height: 400px;
+  min-height: 460px;
+  border: 1px solid rgba(95, 120, 166, 0.28);
+  box-shadow: 0 18px 40px rgba(5, 8, 16, 0.45);
 }
 
 #priceChart {
   width: 100% !important;
-  height: 360px !important;
+  height: 400px !important;
 }
 
 #rsiChart {
   width: 100% !important;
-  height: 170px !important;
-  margin-top: 14px;
+  height: 190px !important;
+  margin-top: 16px;
 }
 
 .chart-header {
@@ -231,6 +233,12 @@ h1 {
   border-color: rgba(255, 183, 77, 0.5);
 }
 
+.source-degraded {
+  color: #ffd180;
+  background: rgba(255, 160, 64, 0.2);
+  border-color: rgba(255, 160, 64, 0.5);
+}
+
 .source-unavailable {
   color: #ffb3b3;
   background: rgba(239, 83, 80, 0.2);
@@ -254,13 +262,13 @@ h1 {
 .indicator-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-bottom: 12px;
+  gap: 10px 14px;
+  margin-bottom: 14px;
 }
 
 .legend-item {
-  font-size: 0.82em;
-  color: var(--text-secondary);
+  font-size: 0.84em;
+  color: #afbdd7;
   padding-left: 14px;
   position: relative;
 }
@@ -285,9 +293,10 @@ h1 {
 .legend-signal-down::before { background: #ef5350; }
 
 .rsi-status {
-  color: var(--text-secondary);
+  color: #9fb1cf;
   font-size: 0.9em;
-  margin-top: 8px;
+  margin-top: 10px;
+  letter-spacing: 0.01em;
 }
 
 /* Utility Classes */
@@ -414,8 +423,9 @@ textarea {
   .chart-header { flex-direction: column; gap: 15px; }
   .chart-controls { flex-direction: row; flex-wrap: wrap; gap: 10px; width: 100%; }
   .modal-content { margin: 10% auto; width: 95%; }
-  #priceChart { height: 280px !important; }
-  #rsiChart { height: 140px !important; }
+  .chart-container { min-height: 390px; padding: 16px; }
+  #priceChart { height: 300px !important; }
+  #rsiChart { height: 145px !important; }
 }
 
 /* Trading Tab Styles */

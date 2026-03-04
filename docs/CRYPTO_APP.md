@@ -65,19 +65,23 @@ Primary source:
 Fallback source:
 
 - local `intervalData` cache/WS-built candles if proxy fetch fails.
+- backend DB cache (24-hour TTL) for `BTCUSDT`, `BNBUSDT`, `ETHUSDT`, `DOGEUSDT` when Binance klines is unavailable.
 
 Resilience controls:
 
 - fetch timeout
 - interval change debounce
 - stale-response nonce guard
+- staged degraded recovery before terminal unavailable
+- crypto backend klines persistence/refresh in DB with 24-hour expiry for key symbols
 
 ## Data source badge states
 
 - `Loading`: fetch in progress
 - `Proxy`: backend `klines` success
+- `Degraded`: proxy fetch failed, waiting briefly for live candle warm-up
 - `Fallback`: proxy failed, local fallback used
-- `Unavailable`: no usable data source
+- `Unavailable`: no historical or live candle data after retry window
 
 ## Trading/API Boundaries
 
@@ -101,6 +105,11 @@ Order reliability flow:
 - `order` supports `newClientOrderId` (auto-generated if omitted)
 - uncertain upstream execution returns recoverable envelope with `clientOrderId`
 - frontend follows with `order-status` verification for deterministic recovery.
+
+Klines troubleshooting behavior:
+
+- `klines` upstream failures may include `upstream_code`, `upstream_errno`, and `source=binance_klines`.
+- chart enters `Degraded` before `Unavailable` to allow live candle warm-up.
 
 Integration boundary note:
 

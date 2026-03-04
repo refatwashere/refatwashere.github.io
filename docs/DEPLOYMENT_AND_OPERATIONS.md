@@ -98,6 +98,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 `
 - Crypto `klines` positive and negative checks
 - Crypto private-action `recvWindow` validation checks
 - Crypto `order-status` checks
+- Crypto chart state labels include `Loading`, `Proxy`, `Degraded`, `Fallback`, `Unavailable`
 - Readiness endpoint checks
 - Frontend critical page and resource checks
 - Crypto UI regression markers
@@ -111,6 +112,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 `
   - success path
   - failure path
   - unknown/recoverable path with `order-status` follow-up
+- Crypto chart source behavior:
+  - `Degraded` appears before terminal `Unavailable` when waiting for live candle warm-up
 - Memorial route behavior:
   - `mem.html` redirects to `mom.html`
   - `memory.html` redirects to `mom.html`

@@ -56,6 +56,112 @@ function validateClientOrderId(string $clientOrderId): void
     }
 }
 
+$CACHE_SYMBOLS = ['BTCUSDT', 'BNBUSDT', 'ETHUSDT', 'DOGEUSDT'];
+
+function isCacheEligibleSymbol(string $symbol): bool
+{
+    global $CACHE_SYMBOLS;
+    return in_array($symbol, $CACHE_SYMBOLS, true);
+}
+
+function getCacheDbConnection(): ?mysqli
+{
+    $host = getEnvValue('DB_HOST');
+    $user = getEnvValue('DB_USER');
+    $pass = getEnvValue('DB_PASS');
+    $name = getEnvValue('DB_NAME');
+    if (!$host || !$user || $pass === null || !$name) {
+        return null;
+    }
+
+    mysqli_report(MYSQLI_REPORT_OFF);
+    $conn = @new mysqli($host, $user, $pass, $name);
+    if ($conn->connect_error) {
+        logErrorEvent('cache_db_connect_error', 'Failed to connect cache DB', ['error' => $conn->connect_error]);
+        return null;
+    }
+    return $conn;
+}
+
+function ensureKlinesCacheTable(mysqli $conn): bool
+{
+    $sql = <<<SQL
+CREATE TABLE IF NOT EXISTS crypto_market_cache (
+  symbol VARCHAR(20) NOT NULL,
+  interval_name VARCHAR(10) NOT NULL,
+  limit_count INT NOT NULL,
+  payload LONGTEXT NOT NULL,
+  fetched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (symbol, interval_name, limit_count),
+  KEY idx_cache_expires_at (expires_at)
+)
+SQL;
+    if (!$conn->query($sql)) {
+        logErrorEvent('cache_table_error', 'Failed to ensure crypto_market_cache table', ['error' => $conn->error]);
+        return false;
+    }
+    return true;
+}
+
+function pruneExpiredKlinesCache(mysqli $conn): void
+{
+    if (random_int(1, 10) !== 1) {
+        return;
+    }
+    $conn->query("DELETE FROM crypto_market_cache WHERE expires_at < UTC_TIMESTAMP()");
+}
+
+function readKlinesCache(mysqli $conn, string $symbol, string $interval, int $limit): ?array
+{
+    $stmt = $conn->prepare(
+        "SELECT payload FROM crypto_market_cache WHERE symbol = ? AND interval_name = ? AND limit_count = ? AND expires_at >= UTC_TIMESTAMP() LIMIT 1"
+    );
+    if ($stmt === false) {
+        return null;
+    }
+    $stmt->bind_param('ssi', $symbol, $interval, $limit);
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return null;
+    }
+    $result = $stmt->get_result();
+    if ($result === false) {
+        $stmt->close();
+        return null;
+    }
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    if (!is_array($row) || !isset($row['payload'])) {
+        return null;
+    }
+    $decoded = json_decode((string) $row['payload'], true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+function writeKlinesCache(mysqli $conn, string $symbol, string $interval, int $limit, array $payload): void
+{
+    $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        return;
+    }
+
+    $stmt = $conn->prepare(
+        "INSERT INTO crypto_market_cache (symbol, interval_name, limit_count, payload, fetched_at, expires_at)
+         VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 24 HOUR))
+         ON DUPLICATE KEY UPDATE payload = VALUES(payload), fetched_at = UTC_TIMESTAMP(), expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 24 HOUR)"
+    );
+    if ($stmt === false) {
+        return;
+    }
+    $stmt->bind_param('ssis', $symbol, $interval, $limit, $json);
+    $stmt->execute();
+    $stmt->close();
+}
+
+$klinesContext = null;
+
 switch ($action) {
     case 'klines':
         $symbol = strtoupper(trim((string) ($input['symbol'] ?? '')));
@@ -83,7 +189,22 @@ switch ($action) {
             $limit
         );
         $url = "https://api.binance.com/api/v3/klines?$queryString";
-        $result = makeRequest($url, 'GET', []);
+        $result = makeRequest(
+            $url,
+            'GET',
+            [],
+            null,
+            [
+                'maxAttempts' => 1,
+                'connectTimeout' => 4,
+                'timeout' => 6
+            ]
+        );
+        $klinesContext = [
+            'symbol' => $symbol,
+            'interval' => $interval,
+            'limit' => $limit
+        ];
         break;
 
     case 'account':
@@ -265,6 +386,24 @@ if ($statusCode >= 400) {
     $message = mapBinanceErrorMessage($statusCode, $upstreamData);
     $curlErrorNo = (int) ($result['curl_errno'] ?? 0);
 
+    if ($action === 'klines' && is_array($klinesContext)) {
+        $symbol = (string) ($klinesContext['symbol'] ?? '');
+        $interval = (string) ($klinesContext['interval'] ?? '');
+        $limit = (int) ($klinesContext['limit'] ?? 100);
+        if ($symbol !== '' && $interval !== '' && $limit > 0 && isCacheEligibleSymbol($symbol)) {
+            $cacheConn = getCacheDbConnection();
+            if ($cacheConn !== null && ensureKlinesCacheTable($cacheConn)) {
+                pruneExpiredKlinesCache($cacheConn);
+                $cached = readKlinesCache($cacheConn, $symbol, $interval, $limit);
+                $cacheConn->close();
+                if (is_array($cached) && count($cached) > 0) {
+                    header('X-Klines-Source: backup-db');
+                    successResponse($cached);
+                }
+            }
+        }
+    }
+
     if (
         $action === 'order'
         && isExecutionStatusUnknown($statusCode, $curlErrorNo, $upstreamData)
@@ -288,10 +427,29 @@ if ($statusCode >= 400) {
     }
 
     logErrorEvent('upstream_error', $message, ['status_code' => $statusCode]);
-    errorResponse($message, $statusCode, [
+    $extra = [
         'upstream_code' => $statusCode,
         'upstream_errno' => $curlErrorNo
-    ]);
+    ];
+    if ($action === 'klines') {
+        $extra['source'] = 'binance_klines';
+    }
+    errorResponse($message, $statusCode, $extra);
 }
 
-successResponse($result['data'] ?? []);
+$payload = $result['data'] ?? [];
+if ($action === 'klines' && is_array($payload) && is_array($klinesContext)) {
+    $symbol = (string) ($klinesContext['symbol'] ?? '');
+    $interval = (string) ($klinesContext['interval'] ?? '');
+    $limit = (int) ($klinesContext['limit'] ?? 100);
+    if ($symbol !== '' && $interval !== '' && $limit > 0 && isCacheEligibleSymbol($symbol)) {
+        $cacheConn = getCacheDbConnection();
+        if ($cacheConn !== null && ensureKlinesCacheTable($cacheConn)) {
+            pruneExpiredKlinesCache($cacheConn);
+            writeKlinesCache($cacheConn, $symbol, $interval, $limit, $payload);
+            $cacheConn->close();
+        }
+    }
+}
+
+successResponse($payload);

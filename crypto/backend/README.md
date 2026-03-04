@@ -21,6 +21,7 @@ Canonical references:
 - `API_TOKEN_CRYPTO` (preferred)
 - `API_TOKEN` (temporary fallback)
 - `ALLOWED_ORIGINS`
+- `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` (required for 24-hour klines backup cache)
 
 ## Endpoints
 
@@ -46,6 +47,12 @@ Readiness:
 
 - `klines`: does **not** require Binance `apiKey`/`apiSecret`
 - `account`, `order`, `orders`, `cancel`, `order-status`: require Binance `apiKey`/`apiSecret`
+
+Klines backup cache behavior:
+
+- stores klines data in MySQL for up to 24 hours
+- symbols covered: `BTCUSDT`, `BNBUSDT`, `ETHUSDT`, `DOGEUSDT`
+- cache is refreshed on successful upstream klines fetch and used when upstream is unavailable
 
 Private-action request controls:
 

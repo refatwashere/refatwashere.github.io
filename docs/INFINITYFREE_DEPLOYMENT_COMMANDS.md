@@ -48,6 +48,10 @@ New-Item -ItemType Directory -Force -Path ".\deploy\infinityfree\generated" | Ou
   | Set-Content ".\deploy\infinityfree\generated\api.htaccess" -Encoding UTF8
 
 (Get-Content ".\deploy\infinityfree\crypto-backend.htaccess.example" -Raw) `
+  .Replace("REPLACE_DB_HOST", $DbHost) `
+  .Replace("REPLACE_DB_USER", $DbUser) `
+  .Replace("REPLACE_DB_PASS", $DbPass) `
+  .Replace("REPLACE_DB_NAME", $DbName) `
   .Replace("REPLACE_WITH_STRONG_CRYPTO_TOKEN", $CryptoToken) `
   .Replace("https://refatishere.free.nf", $AllowedOrigin) `
   | Set-Content ".\deploy\infinityfree\generated\crypto-backend.htaccess" -Encoding UTF8

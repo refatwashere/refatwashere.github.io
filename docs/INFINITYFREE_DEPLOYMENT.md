@@ -46,6 +46,10 @@ Create these files from templates:
 
 Replace all `REPLACE_*` placeholders.
 
+Important:
+
+- `crypto/backend/.htaccess` must include `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` for 24-hour market cache backup to work.
+
 ## 4) Verify readiness URLs
 
 - `https://refatishere.free.nf/api/health.php`

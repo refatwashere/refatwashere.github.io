@@ -235,10 +235,24 @@ function isExecutionStatusUnknown(int $httpCode, int $curlErrorNo, array $upstre
     return false;
 }
 
-function makeRequest(string $url, string $method, array $headers, ?string $data = null): array
+function makeRequest(string $url, string $method, array $headers, ?string $data = null, array $options = []): array
 {
-    $maxAttempts = 3;
-    $retryDelayMs = 300;
+    $maxAttempts = (int) ($options['maxAttempts'] ?? 3);
+    $retryDelayMs = (int) ($options['retryDelayMs'] ?? 300);
+    $connectTimeout = (int) ($options['connectTimeout'] ?? 10);
+    $timeout = (int) ($options['timeout'] ?? 30);
+    if ($maxAttempts < 1) {
+        $maxAttempts = 1;
+    }
+    if ($retryDelayMs < 0) {
+        $retryDelayMs = 0;
+    }
+    if ($connectTimeout < 1) {
+        $connectTimeout = 1;
+    }
+    if ($timeout < 1) {
+        $timeout = 1;
+    }
     $lastErrorMessage = 'Request failed';
     $lastHttpCode = 500;
     $lastData = [];
@@ -249,8 +263,8 @@ function makeRequest(string $url, string $method, array $headers, ?string $data 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connectTimeout);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
 
         if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);

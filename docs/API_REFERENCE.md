@@ -136,6 +136,12 @@ All actions:
 - Requires: `symbol`, `interval`
 - Optional: `limit` (default `100`, clamped `20..500`)
 - `useTestnet` ignored for klines (always main Binance market endpoint)
+- DB-backed 24h backup cache is enabled for:
+  - `BTCUSDT`
+  - `BNBUSDT`
+  - `ETHUSDT`
+  - `DOGEUSDT`
+  (served when upstream klines is unavailable)
 
 Validation:
 
@@ -148,6 +154,14 @@ Status codes:
 - `422` invalid symbol/interval
 - `401` unauthorized
 - `4xx/5xx` mapped upstream failure
+
+Upstream failure diagnostics (non-breaking optional fields):
+
+- `upstream_code`
+- `upstream_errno`
+- `source` (`binance_klines`)
+
+If cache fallback is served, response still uses success envelope with cached klines array.
 
 ## `POST /crypto/backend/api.php?action=account`
 

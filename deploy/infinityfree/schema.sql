@@ -29,3 +29,15 @@ CREATE TABLE IF NOT EXISTS simple_earn (
   earnings DECIMAL(24,10) NOT NULL DEFAULT 0,
   start_date DATE NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS crypto_market_cache (
+  symbol VARCHAR(20) NOT NULL,
+  interval_name VARCHAR(10) NOT NULL,
+  limit_count INT NOT NULL,
+  payload LONGTEXT NOT NULL,
+  fetched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (symbol, interval_name, limit_count),
+  KEY idx_cache_expires_at (expires_at)
+);

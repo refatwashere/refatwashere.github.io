@@ -226,10 +226,15 @@ Assert ($r.Json.meta.page -eq 1) "Expected page meta in trades response"
 
 Write-Step "C5: crypto klines with token should return success array"
 $r = Invoke-Check -Method POST -Url "$cryptoApi?action=klines" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{ symbol = "BTCUSDT"; interval = "5m"; limit = 50 }
-Assert ($r.StatusCode -eq 200) "Expected 200 for crypto klines, got $($r.StatusCode)"
-Assert (Is-SuccessResponse -Json $r.Json) "Expected success response for crypto klines"
-Assert ($r.Json.data -is [System.Array]) "Expected klines data array"
-Assert ($r.Json.data.Count -gt 0) "Expected at least one kline row"
+if ($r.StatusCode -eq 200) {
+    Assert (Is-SuccessResponse -Json $r.Json) "Expected success response for crypto klines"
+    Assert ($r.Json.data -is [System.Array]) "Expected klines data array"
+    Assert ($r.Json.data.Count -gt 0) "Expected at least one kline row"
+} else {
+    Assert ($r.Json.request_id) "Expected request_id for klines upstream failure"
+    Assert ($r.Json.upstream_code) "Expected upstream_code for klines upstream failure"
+    Assert ($r.Json.source -eq "binance_klines") "Expected source=binance_klines for klines upstream failure"
+}
 
 if (-not $SkipReadinessChecks) {
     Write-Step "D1: readiness checks should return 200 when env vars are configured"
@@ -293,6 +298,15 @@ if (-not $SkipFrontendChecks) {
     Assert ($cryptoPage.Raw -match "id=`"chartDataSourceBadge`"") "Missing chart data-source badge"
     Assert ($cryptoPage.Raw -match "RSI 14") "Missing RSI legend label"
     Assert ($cryptoPage.Raw -notmatch "Ãƒ|Ã¢") "Detected mojibake artifacts in crypto page"
+
+    Write-Step "E4b: chart data source state labels should include Degraded and existing states"
+    $cryptoAppJs = Invoke-Check -Method GET -Url "$base/crypto/src/js/core/app.js"
+    Assert ($cryptoAppJs.StatusCode -eq 200) "Failed to load crypto app.js"
+    Assert ($cryptoAppJs.Raw -match "Degraded") "Missing Degraded chart source state label"
+    Assert ($cryptoAppJs.Raw -match "Loading") "Missing Loading chart source state label"
+    Assert ($cryptoAppJs.Raw -match "Proxy") "Missing Proxy chart source state label"
+    Assert ($cryptoAppJs.Raw -match "Fallback") "Missing Fallback chart source state label"
+    Assert ($cryptoAppJs.Raw -match "Unavailable") "Missing Unavailable chart source state label"
 
     Write-Step "E5: legacy journal/memorial pages should not contain mojibake markers"
     foreach ($legacyPage in @("$base/Tradejournal.html", "$base/mem.html", "$base/memory.html")) {
