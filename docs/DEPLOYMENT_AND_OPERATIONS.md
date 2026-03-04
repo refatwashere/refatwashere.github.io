@@ -4,6 +4,10 @@ Last updated: 2026-03-04
 
 This document is the canonical deployment and operations reference. `DEPLOY_RUNBOOK.md` remains a concise operational quick runbook.
 
+For provider-selection strategy under free/no-card constraints, see:
+
+- `DEPLOYMENT_OPTIONS_FREE.md`
+
 ## Environment Variables
 
 ## Legacy API (`/api/*`)

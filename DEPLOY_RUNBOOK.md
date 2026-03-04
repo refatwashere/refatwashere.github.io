@@ -1,6 +1,7 @@
 ﻿# Deploy Runbook
 
 > Canonical detailed operations guide: docs/DEPLOYMENT_AND_OPERATIONS.md 
+> Free/no-card provider options guide: docs/DEPLOYMENT_OPTIONS_FREE.md
 
 ## Scope
 

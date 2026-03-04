@@ -45,6 +45,7 @@ Canonical documentation:
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API_REFERENCE.md)
 - [Deployment and Operations](docs/DEPLOYMENT_AND_OPERATIONS.md)
+- [Free/No-Card Deployment Options](docs/DEPLOYMENT_OPTIONS_FREE.md)
 - [Frontend Pages](docs/FRONTEND_PAGES.md)
 - [Crypto App](docs/CRYPTO_APP.md)
 - [Project Changelog](docs/CHANGELOG_PROJECT.md)
