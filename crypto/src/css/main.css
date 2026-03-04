@@ -211,6 +211,19 @@ h1 {
   align-items: center;
 }
 
+.chart-controls .btn-small {
+  padding: 8px 12px;
+  font-size: 0.82em;
+  white-space: nowrap;
+}
+
+.chart-controls .btn-small:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .chart-source-badge {
   padding: 6px 10px;
   border-radius: 999px;

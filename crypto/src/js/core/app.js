@@ -112,6 +112,7 @@ class CryptoApp {
       LINKUSDT: 3,
       UNIUSDT: 3
     };
+    this.CHART_HISTORY_LIMIT = 240;
     
     this.state = {
       cryptoPrices: {},
@@ -147,6 +148,10 @@ class CryptoApp {
     this.chartFallbackRetryBudget = 3;
     this.chartFallbackRetryDelayMs = 2000;
     this.chartDegradedTimeoutMs = 12000;
+    this.chartZoomDefaultPoints = 120;
+    this.chartZoomVisiblePoints = this.chartZoomDefaultPoints;
+    this.chartZoomStepPoints = 20;
+    this.chartZoomMinPoints = 20;
     
     this.init();
   }
@@ -219,23 +224,115 @@ class CryptoApp {
 
   getPriceScaleBounds(history, padRatio = 0.06) {
     if (!Array.isArray(history) || history.length === 0) return null;
-    const lows = history.map((h) => Number(h.low)).filter(Number.isFinite);
-    const highs = history.map((h) => Number(h.high)).filter(Number.isFinite);
-    if (lows.length === 0 || highs.length === 0) return null;
 
-    const rawMin = Math.min(...lows);
-    const rawMax = Math.max(...highs);
-    if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax)) return null;
+    const values = [];
+    for (const h of history) {
+      const low = Number(h?.low);
+      const high = Number(h?.high);
+      const open = Number(h?.open);
+      const close = Number(h?.close);
+      if (Number.isFinite(low) && low > 0) values.push(low);
+      if (Number.isFinite(high) && high > 0) values.push(high);
+      if (Number.isFinite(open) && open > 0) values.push(open);
+      if (Number.isFinite(close) && close > 0) values.push(close);
+    }
+    if (values.length < 2) return null;
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const pickQuantile = (q) => {
+      const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * q)));
+      return sorted[idx];
+    };
+
+    // Trim extreme outliers to keep range readable if one bad candle arrives.
+    const qLow = pickQuantile(0.02);
+    const qHigh = pickQuantile(0.98);
+    const rawMin = Number.isFinite(qLow) ? qLow : sorted[0];
+    const rawMax = Number.isFinite(qHigh) ? qHigh : sorted[sorted.length - 1];
+
+    if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax) || rawMax <= 0) return null;
 
     let span = rawMax - rawMin;
     if (!Number.isFinite(span) || span <= 0) {
-      span = Math.max(rawMax * 0.01, 1);
+      const base = Math.max(Math.abs(rawMax), Math.abs(rawMin), 1);
+      span = base * 0.01;
     }
 
     const pad = Math.max(span * padRatio, rawMax * 0.001);
-    const min = Math.max(0, rawMin - pad);
-    const max = rawMax + pad;
+    let min = Math.max(0, rawMin - pad);
+    let max = rawMax + pad;
+
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+      const center = Number.isFinite(rawMax) ? rawMax : 1;
+      const epsilon = Math.max(center * 0.01, 0.000001);
+      min = Math.max(0, center - epsilon);
+      max = center + epsilon;
+    }
+
+    // Final guard: if still invalid, skip manual bounds and let Chart.js autoscale.
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return null;
     return { min, max };
+  }
+
+  applyPriceScaleBounds(history) {
+    if (!this.priceChart?.options?.scales?.y) return;
+    const bounds = this.getPriceScaleBounds(history, 0.06);
+    if (bounds && Number.isFinite(bounds.min) && Number.isFinite(bounds.max) && bounds.max > bounds.min) {
+      this.priceChart.options.scales.y.min = bounds.min;
+      this.priceChart.options.scales.y.max = bounds.max;
+      return;
+    }
+    delete this.priceChart.options.scales.y.min;
+    delete this.priceChart.options.scales.y.max;
+  }
+
+  getVisibleChartHistory(history) {
+    if (!Array.isArray(history) || history.length === 0) return [];
+    const total = history.length;
+    const minimum = Math.max(1, Math.min(this.chartZoomMinPoints, total));
+    const windowSize = Math.min(total, Math.max(minimum, Math.round(this.chartZoomVisiblePoints)));
+    return history.slice(total - windowSize);
+  }
+
+  updateChartZoomButtons(totalPoints = 0) {
+    const zoomInBtn = document.getElementById('chartZoomIn');
+    const zoomOutBtn = document.getElementById('chartZoomOut');
+    const zoomResetBtn = document.getElementById('chartZoomReset');
+    if (!zoomInBtn || !zoomOutBtn || !zoomResetBtn) return;
+
+    if (!Number.isFinite(totalPoints) || totalPoints <= 0) {
+      zoomInBtn.disabled = true;
+      zoomOutBtn.disabled = true;
+      zoomResetBtn.disabled = true;
+      return;
+    }
+
+    const minWindow = Math.max(1, Math.min(this.chartZoomMinPoints, totalPoints));
+    const currentWindow = Math.min(totalPoints, Math.max(minWindow, Math.round(this.chartZoomVisiblePoints)));
+    zoomInBtn.disabled = currentWindow <= minWindow;
+    zoomOutBtn.disabled = currentWindow >= totalPoints;
+    zoomResetBtn.disabled = currentWindow === Math.min(totalPoints, this.chartZoomDefaultPoints);
+  }
+
+  zoomChartIn() {
+    this.chartZoomVisiblePoints = Math.max(
+      this.chartZoomMinPoints,
+      this.chartZoomVisiblePoints - this.chartZoomStepPoints
+    );
+    this.updateChart();
+  }
+
+  zoomChartOut() {
+    this.chartZoomVisiblePoints = Math.min(
+      this.CHART_HISTORY_LIMIT,
+      this.chartZoomVisiblePoints + this.chartZoomStepPoints
+    );
+    this.updateChart();
+  }
+
+  resetChartZoom() {
+    this.chartZoomVisiblePoints = this.chartZoomDefaultPoints;
+    this.updateChart();
   }
 
   getBinancePriceDecimals(symbol, price) {
@@ -262,7 +359,7 @@ class CryptoApp {
     return {
       symbol: String(symbol || '').toUpperCase(),
       interval: String(interval || ''),
-      limit: 100
+      limit: this.CHART_HISTORY_LIMIT
     };
   }
 
@@ -341,6 +438,44 @@ class CryptoApp {
 
   async sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  isLocalFileMode() {
+    try {
+      return window.location?.protocol === 'file:';
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  async handleLocalFileChartMode(symbol, interval, requestNonce) {
+    const key = `${symbol}_${interval}`;
+    const fallbackData = this.getFallbackIntervalData(symbol, interval);
+    if (fallbackData.length > 0) {
+      this.data.intervalData[key] = fallbackData;
+      this.updateChart();
+      this.setChartDataSourceState('fallback');
+      this.showChartDataWarning('Local file mode: using live/cached candles (backend fetch disabled).');
+      return;
+    }
+
+    this.setChartDataSourceState('degraded');
+    this.showChartDataWarning('Local file mode: waiting for live WebSocket candles.');
+    const warmed = await this.waitForLiveFallback(symbol, interval, requestNonce);
+    if (requestNonce !== this.chartFetchNonce) return;
+
+    if (warmed) {
+      const warmedData = this.getFallbackIntervalData(symbol, interval);
+      if (warmedData.length > 0) {
+        this.data.intervalData[key] = warmedData;
+        this.updateChart();
+      }
+      this.setChartDataSourceState('fallback');
+      this.showChartDataWarning('Local file mode: using live WebSocket candles.');
+    } else {
+      this.setChartDataSourceState('unavailable');
+      this.showChartDataWarning('No local candles yet. Run from hosted URL for backend history.');
+    }
   }
 
   async waitForLiveFallback(symbol, interval, requestNonce) {
@@ -523,7 +658,10 @@ class CryptoApp {
       chartInterval: 5, maxDataPoints: 50, autoRefresh: true,
       pricePrecision: 2, binanceApiKey: '', binanceSecretKey: '', chartTimeframe: '5m'
     };
-    return { ...defaults, ...this.loadData('appSettings', {}) };
+    const loaded = { ...defaults, ...this.loadData('appSettings', {}) };
+    const parsedMax = Number(loaded.maxDataPoints);
+    loaded.maxDataPoints = Number.isFinite(parsedMax) ? Math.max(120, Math.round(parsedMax)) : 120;
+    return loaded;
   }
   
   init() {
@@ -597,6 +735,9 @@ class CryptoApp {
     document.getElementById('addTradeBtn')?.addEventListener('click', () => this.openModal('tradeModal'));
     document.getElementById('chartSymbolSelect')?.addEventListener('change', (e) => this.changeChartSymbol(e.target.value));
     document.getElementById('chartInterval')?.addEventListener('change', (e) => this.changeChartInterval(e.target.value));
+    document.getElementById('chartZoomIn')?.addEventListener('click', () => this.zoomChartIn());
+    document.getElementById('chartZoomOut')?.addEventListener('click', () => this.zoomChartOut());
+    document.getElementById('chartZoomReset')?.addEventListener('click', () => this.resetChartZoom());
     
     // Market controls
     document.getElementById('searchInput')?.addEventListener('input', () => this.updateDisplay());
@@ -761,7 +902,11 @@ class CryptoApp {
       lastEntry.low = Math.min(lastEntry.low, price);
     }
     
-    const maxDataPoints = this.data.settings?.maxDataPoints || 50;
+    const maxDataPoints = Math.max(
+      120,
+      Number(this.data.settings?.maxDataPoints) || 0,
+      this.CHART_HISTORY_LIMIT
+    );
     if (this.data.intervalData[key].length > maxDataPoints) {
       this.data.intervalData[key].shift();
     }
@@ -1119,7 +1264,18 @@ class CryptoApp {
   updateChart() {
     if (!this.priceChart || !this.rsiChart) return;
     const key = `${this.state.currentChartSymbol}_${this.state.currentInterval}`;
-    const history = this.data.intervalData[key] || [];
+    const history = (this.data.intervalData[key] || []).filter((h) => {
+      const open = Number(h?.open);
+      const high = Number(h?.high);
+      const low = Number(h?.low);
+      const close = Number(h?.close);
+      const time = Number(h?.time);
+      return Number.isFinite(time)
+        && Number.isFinite(open) && open > 0
+        && Number.isFinite(high) && high > 0
+        && Number.isFinite(low) && low > 0
+        && Number.isFinite(close) && close > 0;
+    });
     const rsiStatus = document.getElementById('rsiStatus');
     if (history.length === 0) {
       this.priceChart.data.labels = [];
@@ -1131,9 +1287,12 @@ class CryptoApp {
       this.priceChart.options.plugins.lastPriceTag.lastPrice = null;
       this.priceChart.update('none');
       this.rsiChart.update('none');
+      this.updateChartZoomButtons(0);
       if (rsiStatus) rsiStatus.hidden = true;
       return;
     }
+
+    const visibleHistory = this.getVisibleChartHistory(history);
     
     const formatTime = (timestamp) => {
       const date = new Date(timestamp);
@@ -1146,8 +1305,8 @@ class CryptoApp {
       }
     };
 
-    const labels = history.map((h) => formatTime(h.time));
-    const closes = history.map((h) => Number(h.close));
+    const labels = visibleHistory.map((h) => formatTime(h.time));
+    const closes = visibleHistory.map((h) => Number(h.close));
     const emaFast = this.calculateEMA(closes, 9);
     const emaSlow = this.calculateEMA(closes, 21);
     const rsi = this.calculateRSI(closes, 14);
@@ -1158,9 +1317,9 @@ class CryptoApp {
       rsi
     });
 
-    const wickData = history.map((h) => [Math.min(h.low, h.high), Math.max(h.low, h.high)]);
-    const bodyData = history.map((h) => [Math.min(h.open, h.close), Math.max(h.open, h.close)]);
-    const candleColors = history.map((h) => (h.close >= h.open ? '#66bb6a' : '#ef5350'));
+    const wickData = visibleHistory.map((h) => [Math.min(h.low, h.high), Math.max(h.low, h.high)]);
+    const bodyData = visibleHistory.map((h) => [Math.min(h.open, h.close), Math.max(h.open, h.close)]);
+    const candleColors = visibleHistory.map((h) => (h.close >= h.open ? '#66bb6a' : '#ef5350'));
 
     this.priceChart.data.labels = labels;
     this.priceChart.data.datasets[0].data = wickData;
@@ -1172,16 +1331,9 @@ class CryptoApp {
     this.priceChart.data.datasets[4].data = bullishSignals;
     this.priceChart.data.datasets[5].data = bearishSignals;
 
-    const priceBounds = this.getPriceScaleBounds(history, 0.06);
-    if (priceBounds) {
-      this.priceChart.options.scales.y.min = priceBounds.min;
-      this.priceChart.options.scales.y.max = priceBounds.max;
-    } else {
-      delete this.priceChart.options.scales.y.min;
-      delete this.priceChart.options.scales.y.max;
-    }
+    this.applyPriceScaleBounds(visibleHistory);
 
-    const lastCandle = history[history.length - 1];
+    const lastCandle = visibleHistory[visibleHistory.length - 1];
     const lastPrice = Number(lastCandle?.close);
     const isUpCandle = Number(lastCandle?.close) >= Number(lastCandle?.open);
     this.priceChart.options.plugins.lastPriceTag.lastPrice = Number.isFinite(lastPrice) ? lastPrice : null;
@@ -1197,10 +1349,12 @@ class CryptoApp {
       rsiStatus.hidden = hasRsiData;
       if (!hasRsiData) {
         const requiredCandles = 15;
-        const haveCandles = history.length;
+        const haveCandles = visibleHistory.length;
         rsiStatus.textContent = `RSI(14) warming up (${haveCandles}/${requiredCandles} candles).`;
       }
     }
+
+    this.updateChartZoomButtons(history.length);
 
     const updateMode = this.prefersReducedMotion ? 'none' : undefined;
     this.priceChart.update(updateMode);
@@ -2165,6 +2319,11 @@ class CryptoApp {
     const key = `${symbol}_${interval}`;
     const requestNonce = ++this.chartFetchNonce;
     this.setChartDataSourceState('loading');
+
+    if (this.isLocalFileMode()) {
+      await this.handleLocalFileChartMode(symbol, interval, requestNonce);
+      return;
+    }
     
     try {
       const payload = this.getChartRequestPayload(symbol, interval);
