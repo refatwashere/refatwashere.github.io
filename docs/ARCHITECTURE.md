@@ -61,6 +61,7 @@ Last updated: 2026-03-04
 1. Frontend opens Binance WebSocket multi-stream.
 2. Ticker updates feed price cards, ticker tape, and interval history updates.
 3. Trading/account/order actions go through crypto backend and require API credentials.
+4. Private trading actions include `recvWindow` timing controls and support `order-status` verification for uncertain execution outcomes.
 
 ## Security Model
 
@@ -106,3 +107,10 @@ Key examples used by frontend:
 - `binance_api_secret`
 - `backend_api_token`
 - `use_testnet`
+- `binance_recv_window`
+
+## Documentation Ownership
+
+- Canonical docs: root `docs/*`
+- Module entry docs: `api/README.md`, `crypto/README.md`, `crypto/backend/README.md`
+- `crypto/docs/*` is treated as supplemental historical/reference content and should not override root canonical contracts.

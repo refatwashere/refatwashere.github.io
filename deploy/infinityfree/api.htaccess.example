@@ -1,0 +1,9 @@
+﻿# API `.htaccess` template
+# Copy to: htdocs/api/.htaccess
+
+SetEnv DB_HOST "REPLACE_DB_HOST"
+SetEnv DB_USER "REPLACE_DB_USER"
+SetEnv DB_PASS "REPLACE_DB_PASS"
+SetEnv DB_NAME "REPLACE_DB_NAME"
+SetEnv ALLOWED_ORIGINS "https://refatishere.free.nf"
+SetEnv API_TOKEN_LEGACY "REPLACE_WITH_STRONG_LEGACY_TOKEN"

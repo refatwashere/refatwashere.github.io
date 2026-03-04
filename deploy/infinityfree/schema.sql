@@ -1,0 +1,31 @@
+﻿-- InfinityFree bootstrap schema for this project
+
+CREATE TABLE IF NOT EXISTS trades (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  pair VARCHAR(50) NOT NULL,
+  quantity DECIMAL(24,10) NOT NULL,
+  entry_price DECIMAL(24,10) NOT NULL,
+  exit_price DECIMAL(24,10) NOT NULL,
+  fees DECIMAL(24,10) NOT NULL DEFAULT 0,
+  learnings TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS campaigns (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(100) NOT NULL,
+  result VARCHAR(100) NOT NULL,
+  winnings DECIMAL(24,10) NOT NULL DEFAULT 0,
+  campaign_date DATE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS simple_earn (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  asset VARCHAR(32) NOT NULL,
+  amount DECIMAL(24,10) NOT NULL,
+  product VARCHAR(128) NOT NULL,
+  apr DECIMAL(10,4) NOT NULL,
+  earnings DECIMAL(24,10) NOT NULL DEFAULT 0,
+  start_date DATE NOT NULL
+);

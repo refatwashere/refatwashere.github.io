@@ -1,0 +1,5 @@
+﻿# Crypto backend `.htaccess` template
+# Copy to: htdocs/crypto/backend/.htaccess
+
+SetEnv ALLOWED_ORIGINS "https://refatishere.free.nf"
+SetEnv API_TOKEN_CRYPTO "REPLACE_WITH_STRONG_CRYPTO_TOKEN"

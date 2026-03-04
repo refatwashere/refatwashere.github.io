@@ -46,6 +46,12 @@ Actions:
 - `action=order` (requires Binance credentials)
 - `action=orders` (requires Binance credentials)
 - `action=cancel` (requires Binance credentials)
+- `action=order-status` (requires Binance credentials)
+
+Private action optional fields:
+
+- `recvWindow` (`1..60000`, default `5000`)
+- `newClientOrderId` on `action=order`
 
 Readiness endpoint:
 
@@ -68,7 +74,16 @@ Account:
 curl -X POST "https://your-domain.example/crypto/backend/api.php?action=account" \
   -H "X-API-Token: YOUR_API_TOKEN_CRYPTO" \
   -H "Content-Type: application/json" \
-  -d '{"apiKey":"YOUR_KEY","apiSecret":"YOUR_SECRET","useTestnet":true}'
+  -d '{"apiKey":"YOUR_KEY","apiSecret":"YOUR_SECRET","useTestnet":true,"recvWindow":5000}'
+```
+
+Order status by client order ID:
+
+```bash
+curl -X POST "https://your-domain.example/crypto/backend/api.php?action=order-status" \
+  -H "X-API-Token: YOUR_API_TOKEN_CRYPTO" \
+  -H "Content-Type: application/json" \
+  -d '{"apiKey":"YOUR_KEY","apiSecret":"YOUR_SECRET","useTestnet":true,"symbol":"BTCUSDT","origClientOrderId":"WEB_BTCUSDT_1234567890_ABCD"}'
 ```
 
 ## Security Notes
@@ -77,3 +92,4 @@ curl -X POST "https://your-domain.example/crypto/backend/api.php?action=account"
 - Use testnet first.
 - Keep origin allow-list restrictive.
 - Rotate token values when exposure is suspected.
+- Runtime uses Binance REST/WebSocket HMAC flows; FIX API (Ed25519) is out of scope.

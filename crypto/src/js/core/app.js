@@ -140,6 +140,7 @@ class CryptoApp {
     this.chartIntervalDebounceTimer = null;
     this.lastChartDataWarningAt = 0;
     this.lastChartDataWarningMessage = '';
+    this.orderSubmitInFlight = false;
     
     this.init();
   }
@@ -415,8 +416,66 @@ class CryptoApp {
     return {
       apiKey: (localStorage.getItem('binance_api_key') || '').trim(),
       apiSecret: (localStorage.getItem('binance_api_secret') || '').trim(),
-      useTestnet: localStorage.getItem('use_testnet') !== 'false'
+      useTestnet: localStorage.getItem('use_testnet') !== 'false',
+      recvWindow: this.getTradingRecvWindow()
     };
+  }
+
+  getTradingRecvWindow() {
+    const raw = (localStorage.getItem('binance_recv_window') || '').trim();
+    if (!raw) return 5000;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return 5000;
+    return Math.min(60000, Math.max(1, Math.round(value)));
+  }
+
+  buildTradingRequestPayload(extra = {}) {
+    return { ...this.getApiCredentials(), ...extra };
+  }
+
+  generateClientOrderId(symbol = 'ORD') {
+    const clean = String(symbol || 'ORD').replace(/[^A-Za-z0-9]/g, '').slice(0, 8) || 'ORD';
+    const ts = Date.now();
+    const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `WEB_${clean}_${ts}_${rnd}`.slice(0, 36);
+  }
+
+  setOrderSubmitBusy(isBusy) {
+    this.orderSubmitInFlight = isBusy;
+    const btn = document.getElementById('orderSubmitBtn');
+    if (btn) {
+      btn.disabled = isBusy;
+      btn.style.opacity = isBusy ? '0.7' : '1';
+      btn.style.cursor = isBusy ? 'not-allowed' : 'pointer';
+    }
+  }
+
+  isRecoverableOrderUnknown(result) {
+    return Boolean(
+      result
+      && typeof result === 'object'
+      && result.data
+      && result.data.recoverable === true
+      && result.data.clientOrderId
+    );
+  }
+
+  async resolveUnknownOrderStatus(credentials, symbol, clientOrderId) {
+    if (!symbol || !clientOrderId) return null;
+    try {
+      const response = await fetch(
+        'backend/api.php?action=order-status',
+        this.getBackendRequestOptions(this.buildTradingRequestPayload({
+          ...credentials,
+          symbol,
+          origClientOrderId: clientOrderId
+        }))
+      );
+      return await response.json();
+    } catch (error) {
+      console.error('Order status resolve error:', error);
+      return null;
+    }
   }
   
   loadSettings() {
@@ -1445,6 +1504,11 @@ class CryptoApp {
   
   async handleOrderSubmit(e) {
     e.preventDefault();
+
+    if (this.orderSubmitInFlight) {
+      this.showNotification('Order request in progress. Please wait.');
+      return;
+    }
     
     const symbol = document.getElementById('orderSymbol').value;
     const side = document.getElementById('orderSubmitBtn').dataset.side;
@@ -1473,25 +1537,42 @@ class CryptoApp {
     if (this.state.tradingMode === 'futures') {
       this.mockFuturesOrder(order);
     } else {
+      this.setOrderSubmitBusy(true);
       try {
         const apiKey = localStorage.getItem('binance_api_key');
         if (!apiKey) {
           this.mockOrder(order);
           return;
         }
-        
+
+        const clientOrderId = this.generateClientOrderId(symbol);
         const credentials = this.getApiCredentials();
         const response = await fetch(
           'backend/api.php?action=order',
-          this.getBackendRequestOptions({ ...credentials, ...order })
+          this.getBackendRequestOptions(this.buildTradingRequestPayload({
+            ...credentials,
+            ...order,
+            newClientOrderId: clientOrderId
+          }))
         );
-        
+
         const result = await response.json();
         if (this.isSuccess(result)) {
           this.showNotification(`Order placed: ${side} ${quantity} ${symbol}`);
           document.getElementById('orderForm').reset();
           this.updateOrderTotal();
           this.refreshOrders();
+        } else if (this.isRecoverableOrderUnknown(result)) {
+          const recoverId = result.data.clientOrderId;
+          this.showNotification(`Order status unknown. Verifying ${recoverId}...`);
+          const resolved = await this.resolveUnknownOrderStatus(credentials, symbol, recoverId);
+          if (this.isSuccess(resolved)) {
+            const status = resolved?.data?.status || 'UNKNOWN';
+            this.showNotification(`Order recovered (${recoverId}): ${status}`);
+            this.refreshOrders();
+          } else {
+            this.showNotification(`Order verification needed. Track by clientOrderId: ${recoverId}`);
+          }
         } else {
           this.showNotification(`Order failed: ${this.getApiErrorMessage(result)}`);
         }
@@ -1499,6 +1580,8 @@ class CryptoApp {
         console.error('Order error:', error);
         this.showNotification('Order failed. Using mock mode.');
         this.mockOrder(order);
+      } finally {
+        this.setOrderSubmitBusy(false);
       }
     }
   }
@@ -1575,7 +1658,7 @@ class CryptoApp {
       const credentials = this.getApiCredentials();
       const response = await fetch(
         'backend/api.php?action=account',
-        this.getBackendRequestOptions(credentials)
+        this.getBackendRequestOptions(this.buildTradingRequestPayload(credentials))
       );
       
       const result = await response.json();
@@ -1626,7 +1709,7 @@ class CryptoApp {
       const credentials = this.getApiCredentials();
       const response = await fetch(
         'backend/api.php?action=account',
-        this.getBackendRequestOptions(credentials)
+        this.getBackendRequestOptions(this.buildTradingRequestPayload(credentials))
       );
       
       const result = await response.json();
@@ -1816,7 +1899,7 @@ class CryptoApp {
       const credentials = this.getApiCredentials();
       const response = await fetch(
         'backend/api.php?action=orders',
-        this.getBackendRequestOptions(credentials)
+        this.getBackendRequestOptions(this.buildTradingRequestPayload(credentials))
       );
       
       const result = await response.json();
@@ -1890,7 +1973,7 @@ class CryptoApp {
       const credentials = this.getApiCredentials();
       const response = await fetch(
         'backend/api.php?action=cancel',
-        this.getBackendRequestOptions({ ...credentials, symbol, orderId })
+        this.getBackendRequestOptions(this.buildTradingRequestPayload({ ...credentials, symbol, orderId }))
       );
       
       const result = await response.json();
@@ -1916,13 +1999,16 @@ class CryptoApp {
     const apiKey = localStorage.getItem('binance_api_key') || '';
     const backendApiToken = localStorage.getItem('backend_api_token') || '';
     const useTestnet = localStorage.getItem('use_testnet') !== 'false';
+    const recvWindow = localStorage.getItem('binance_recv_window') || '5000';
     
     const apiKeyEl = document.getElementById('apiKey');
     const backendTokenEl = document.getElementById('backendApiToken');
     const testnetEl = document.getElementById('useTestnet');
+    const recvWindowEl = document.getElementById('recvWindow');
     if (apiKeyEl) apiKeyEl.value = apiKey;
     if (backendTokenEl) backendTokenEl.value = backendApiToken;
     if (testnetEl) testnetEl.checked = useTestnet;
+    if (recvWindowEl) recvWindowEl.value = recvWindow;
   }
   
   saveSettings() {
@@ -1930,11 +2016,17 @@ class CryptoApp {
     const apiSecret = document.getElementById('apiSecret').value.trim();
     const backendApiToken = document.getElementById('backendApiToken')?.value.trim() || '';
     const useTestnet = document.getElementById('useTestnet').checked;
+    const recvWindowInput = document.getElementById('recvWindow')?.value.trim() || '5000';
+    const recvWindow = Number(recvWindowInput);
+    const normalizedRecvWindow = Number.isFinite(recvWindow)
+      ? Math.min(60000, Math.max(1, Math.round(recvWindow)))
+      : 5000;
     
     localStorage.setItem('binance_api_key', apiKey);
     localStorage.setItem('binance_api_secret', apiSecret);
     localStorage.setItem('backend_api_token', backendApiToken);
     localStorage.setItem('use_testnet', useTestnet.toString());
+    localStorage.setItem('binance_recv_window', String(normalizedRecvWindow));
     
     this.showNotification('Settings saved successfully!');
     this.closeModal('settingsModal');
@@ -1945,11 +2037,14 @@ class CryptoApp {
     localStorage.removeItem('binance_api_secret');
     localStorage.removeItem('backend_api_token');
     localStorage.removeItem('use_testnet');
+    localStorage.removeItem('binance_recv_window');
     
     document.getElementById('apiKey').value = '';
     document.getElementById('apiSecret').value = '';
     const backendTokenEl = document.getElementById('backendApiToken');
+    const recvWindowEl = document.getElementById('recvWindow');
     if (backendTokenEl) backendTokenEl.value = '';
+    if (recvWindowEl) recvWindowEl.value = '5000';
     document.getElementById('useTestnet').checked = true;
     
     this.showNotification('Settings cleared');

@@ -27,8 +27,10 @@ Optional compatibility fallback:
 1. Open `/crypto/crypto.html`
 2. Go to `Settings`
 3. Set `Backend API Token` to `API_TOKEN_CRYPTO`
-4. Optionally provide Binance API key/secret for account/order actions
+4. Optionally provide Binance REST API key/secret for account/order actions
 5. Keep testnet enabled for safe validation
+6. Keep `recvWindow` at `5000` unless you have a specific timing issue
+7. FIX API (Ed25519) is not used by this app runtime
 
 ## 4) Validate
 
@@ -46,7 +48,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 `
 
 - `Unauthorized`: verify `X-API-Token` value and server env var.
 - Chart history unavailable: verify backend is deployed and `action=klines` reachable.
-- Trading actions fail: verify Binance credentials and testnet settings.
+- Trading actions fail: verify REST credentials, testnet settings, and `recvWindow`.
 
 For full details:
 

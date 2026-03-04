@@ -1,0 +1,6 @@
+﻿# Root `.htaccess` template
+# Copy to: htdocs/.htaccess
+
+SetEnv ALLOWED_ORIGINS "https://refatishere.free.nf"
+SetEnv API_TOKEN_LEGACY "REPLACE_WITH_STRONG_LEGACY_TOKEN"
+SetEnv API_TOKEN_CRYPTO "REPLACE_WITH_STRONG_CRYPTO_TOKEN"

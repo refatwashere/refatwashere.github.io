@@ -59,8 +59,10 @@ Compatibility fallback:
 In `crypto/crypto.html` settings:
 
 - Set `Backend API Token` = `API_TOKEN_CRYPTO`
-- Configure Binance API key/secret if using account/order actions
+- Configure Binance REST API key/secret if using account/order actions
 - Keep testnet enabled for safe validation
+- Set `recvWindow` (default `5000`)
+- FIX API (Ed25519) is not used by this deployment path
 
 ## Smoke Test Commands
 
@@ -94,9 +96,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 `
 - CORS allow/deny behavior
 - Trades pagination/meta response
 - Crypto `klines` positive and negative checks
+- Crypto private-action `recvWindow` validation checks
+- Crypto `order-status` checks
 - Readiness endpoint checks
 - Frontend critical page and resource checks
 - Crypto UI regression markers
+
+## Manual QA Matrix (release gate companion)
+
+- Desktop and mobile page rendering (`360px`, `768px`, `1024px+`)
+- Keyboard-only navigation through root nav, tabs, and modal controls
+- Crypto settings save/clear verification (`backend token`, `use testnet`, `recvWindow`)
+- Crypto order flows:
+  - success path
+  - failure path
+  - unknown/recoverable path with `order-status` follow-up
+- Memorial route behavior:
+  - `mem.html` redirects to `mom.html`
+  - `memory.html` redirects to `mom.html`
 
 ## Pass/Fail Gates
 
@@ -136,3 +153,12 @@ Weekly:
 
 - Review error/latency trends from logs.
 - Confirm token configuration and remove temporary fallback `API_TOKEN` when safe.
+
+
+## InfinityFree Guide
+
+For full InfinityFree step-by-step deployment, see:
+
+- `docs/INFINITYFREE_DEPLOYMENT.md`
+
+

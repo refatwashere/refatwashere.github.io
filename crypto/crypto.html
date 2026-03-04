@@ -185,13 +185,17 @@
                 <button class="close" aria-label="Close modal">&times;</button>
                 <h3 id="settingsModalTitle">Settings</h3>
                 <div class="settings-section">
-                    <h4>Binance API Configuration</h4>
+                    <h4>Binance REST API Configuration</h4>
                     <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 15px;">
-                        Enter your Binance API credentials for real trading features. Leave empty for read-only mode.
+                        Enter your Binance REST API credentials for real trading features. Leave empty for read-only mode.
                     </p>
-                    <input type="text" id="apiKey" placeholder="API Key" aria-label="Binance API key" autocomplete="off">
-                    <input type="password" id="apiSecret" placeholder="API Secret" aria-label="Binance API secret" autocomplete="off">
+                    <p style="color: var(--text-secondary); font-size: 0.85em; margin: 0 0 12px 0;">
+                        FIX API (Ed25519) is not used by this app.
+                    </p>
+                    <input type="text" id="apiKey" placeholder="Binance REST API Key" aria-label="Binance REST API key" autocomplete="off">
+                    <input type="password" id="apiSecret" placeholder="Binance REST API Secret" aria-label="Binance REST API secret" autocomplete="off">
                     <input type="password" id="backendApiToken" placeholder="Backend API Token (API_TOKEN_CRYPTO)" aria-label="Backend API token" autocomplete="off">
+                    <input type="number" id="recvWindow" placeholder="recvWindow (ms, default 5000)" aria-label="Binance recvWindow in milliseconds" min="1" max="60000" step="1">
                     <label style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
                         <input type="checkbox" id="useTestnet" checked aria-label="Use testnet">
                         <span>Use Testnet (Recommended for testing)</span>

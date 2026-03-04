@@ -154,6 +154,48 @@ if (-not $SkipNegativeTests) {
     Write-Step "B5: crypto klines invalid interval should be 422"
     $r = Invoke-Check -Method POST -Url "$cryptoApi?action=klines" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{ symbol = "BTCUSDT"; interval = "2m"; limit = 50 }
     Assert ($r.StatusCode -eq 422) "Expected 422 for invalid klines interval, got $($r.StatusCode)"
+
+    Write-Step "B6: crypto account invalid recvWindow should be 422"
+    $r = Invoke-Check -Method POST -Url "$cryptoApi?action=account" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{
+        apiKey = "dummy"
+        apiSecret = "dummy"
+        useTestnet = $true
+        recvWindow = 70000
+    }
+    Assert ($r.StatusCode -eq 422) "Expected 422 for invalid recvWindow, got $($r.StatusCode)"
+
+    Write-Step "B6b: crypto account non-numeric recvWindow should be 422"
+    $r = Invoke-Check -Method POST -Url "$cryptoApi?action=account" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{
+        apiKey = "dummy"
+        apiSecret = "dummy"
+        useTestnet = $true
+        recvWindow = "not-a-number"
+    }
+    Assert ($r.StatusCode -eq 422) "Expected 422 for non-numeric recvWindow, got $($r.StatusCode)"
+
+    Write-Step "B7: crypto order-status missing identifiers should be 422"
+    $r = Invoke-Check -Method POST -Url "$cryptoApi?action=order-status" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{
+        apiKey = "dummy"
+        apiSecret = "dummy"
+        useTestnet = $true
+        symbol = "BTCUSDT"
+    }
+    Assert ($r.StatusCode -eq 422) "Expected 422 for order-status without order id(s), got $($r.StatusCode)"
+
+    Write-Step "B8: crypto order simulateUnknown should return recoverable error envelope"
+    $r = Invoke-Check -Method POST -Url "$cryptoApi?action=order" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{
+        apiKey = "dummy"
+        apiSecret = "dummy"
+        useTestnet = $true
+        symbol = "BTCUSDT"
+        side = "BUY"
+        type = "MARKET"
+        quantity = "0.001"
+        simulateUnknown = $true
+    }
+    Assert (($r.StatusCode -eq 504) -or ($r.StatusCode -eq 502)) "Expected unknown-status envelope status code 504/502, got $($r.StatusCode)"
+    Assert ($r.Json.data.recoverable -eq $true) "Expected recoverable=true for unknown-status envelope"
+    Assert ($r.Json.data.clientOrderId) "Expected clientOrderId in unknown-status envelope"
 }
 
 Write-Step "C1: /api correct legacy token should be 200"
@@ -269,6 +311,7 @@ if ($RunTradingFlow) {
         apiKey = $BinanceApiKey
         apiSecret = $BinanceApiSecret
         useTestnet = $true
+        recvWindow = 5000
     }
 
     $acct = Invoke-Check -Method POST -Url "$cryptoApi?action=account" -Headers $commonHeaders -Body $commonBody
@@ -282,6 +325,7 @@ if ($RunTradingFlow) {
         type = "LIMIT"
         quantity = "0.001"
         price = "10000"
+        newClientOrderId = "SMOKE_$(Get-Date -Format yyyyMMddHHmmss)"
     })
     Assert ($order.StatusCode -eq 200) "Order call failed: $($order.StatusCode)"
     Assert (Is-SuccessResponse -Json $order.Json) "Order response is not success"
@@ -297,6 +341,10 @@ if ($RunTradingFlow) {
         $orderId = $order.Json.data.orderId
     }
     Assert ($orderId) "Could not determine orderId for cancel test"
+
+    $orderStatus = Invoke-Check -Method POST -Url "$cryptoApi?action=order-status" -Headers $commonHeaders -Body ($commonBody + @{ symbol = $symbol; orderId = "$orderId" })
+    Assert ($orderStatus.StatusCode -eq 200) "order-status call failed: $($orderStatus.StatusCode)"
+    Assert (Is-SuccessResponse -Json $orderStatus.Json) "order-status response is not success"
 
     $cancel = Invoke-Check -Method POST -Url "$cryptoApi?action=cancel" -Headers $commonHeaders -Body ($commonBody + @{ symbol = $symbol; orderId = $orderId })
     Assert ($cancel.StatusCode -eq 200) "Cancel call failed: $($cancel.StatusCode)"

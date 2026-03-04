@@ -26,6 +26,7 @@ Canonical references:
 - Backend-proxied chart klines + fallback model
 - Journal, alerts, watchlist, mock/real trading flows
 - Tokenized backend access and request envelope compatibility
+- Private-action timing controls (`recvWindow`) and `order-status` recovery checks
 
 ## Notes
 

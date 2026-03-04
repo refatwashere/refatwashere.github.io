@@ -45,9 +45,11 @@ Canonical documentation:
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API_REFERENCE.md)
 - [Deployment and Operations](docs/DEPLOYMENT_AND_OPERATIONS.md)
+- [InfinityFree Deployment](docs/INFINITYFREE_DEPLOYMENT.md)
 - [Free/No-Card Deployment Options](docs/DEPLOYMENT_OPTIONS_FREE.md)
 - [Frontend Pages](docs/FRONTEND_PAGES.md)
 - [Crypto App](docs/CRYPTO_APP.md)
+- [Project Organization](docs/PROJECT_ORGANIZATION.md)
 - [Project Changelog](docs/CHANGELOG_PROJECT.md)
 
 Module-specific entry points:
@@ -69,3 +71,4 @@ Module-specific entry points:
 - Crypto backend requires PHP with cURL and outbound network access.
 - Local `file://` loading will not fully simulate deployed behavior.
 - Some legacy API compatibility behavior remains intentionally (example: trades GET legacy array response when no pagination/filter params are supplied).
+

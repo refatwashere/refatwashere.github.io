@@ -83,13 +83,29 @@ Resilience controls:
 
 Actions requiring Binance credentials:
 
-- `account`, `order`, `orders`, `cancel`
+- `account`, `order`, `orders`, `cancel`, `order-status`
 
 Action not requiring Binance credentials:
 
 - `klines`
 
 All backend actions still require backend token (`X-API-Token`).
+
+Timing security controls:
+
+- private actions include `timestamp` + configurable `recvWindow` (default `5000`)
+- `recvWindow` is validated/clamped on backend (`1..60000`)
+
+Order reliability flow:
+
+- `order` supports `newClientOrderId` (auto-generated if omitted)
+- uncertain upstream execution returns recoverable envelope with `clientOrderId`
+- frontend follows with `order-status` verification for deterministic recovery.
+
+Integration boundary note:
+
+- App uses Binance REST/WebSocket HMAC credentials.
+- Binance FIX API (Ed25519) is not part of this runtime deployment.
 
 ## Local Storage Keys
 
@@ -100,6 +116,7 @@ Examples used by app:
 - `appSettings`, `theme`
 - `binance_api_key`, `binance_api_secret`
 - `backend_api_token`, `use_testnet`
+- `binance_recv_window`
 
 ## Error Handling and Compatibility
 

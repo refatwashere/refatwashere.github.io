@@ -176,6 +176,18 @@ function requireApiToken(): void
 function mapBinanceErrorMessage(int $code, array $data): string
 {
     $upstreamMessage = trim((string) ($data['msg'] ?? ''));
+    $upstreamCode = (int) ($data['code'] ?? 0);
+
+    if ($upstreamCode === -1021) {
+        return 'Timestamp/recvWindow validation failed. Check server clock drift and recvWindow setting.';
+    }
+    if ($upstreamCode === -1022) {
+        return 'Binance signature validation failed. Verify API secret and signed parameters.';
+    }
+    if ($upstreamCode === -2015) {
+        return 'Invalid Binance API key/secret or API permissions.';
+    }
+
     if ($upstreamMessage !== '') {
         return $upstreamMessage;
     }
@@ -194,6 +206,35 @@ function signRequest(string $queryString, string $apiSecret): string
     return hash_hmac('sha256', $queryString, $apiSecret);
 }
 
+function buildClientOrderId(string $symbol = 'ORD'): string
+{
+    $symbolPart = strtoupper(preg_replace('/[^A-Z0-9]/', '', $symbol) ?: 'ORD');
+    $symbolPart = substr($symbolPart, 0, 8);
+    $timePart = (string) round(microtime(true) * 1000);
+    $randomPart = substr(bin2hex(random_bytes(4)), 0, 8);
+    $id = "WEB_{$symbolPart}_{$timePart}_{$randomPart}";
+    return substr($id, 0, 36);
+}
+
+function isExecutionStatusUnknown(int $httpCode, int $curlErrorNo, array $upstreamData): bool
+{
+    $transportUnknownErrors = [6, 7, 28, 35, 52, 56];
+    if (in_array($curlErrorNo, $transportUnknownErrors, true)) {
+        return true;
+    }
+
+    if (in_array($httpCode, [502, 503, 504], true)) {
+        return true;
+    }
+
+    $upstreamCode = (int) ($upstreamData['code'] ?? 0);
+    if (in_array($upstreamCode, [-1001, -1007], true)) {
+        return true;
+    }
+
+    return false;
+}
+
 function makeRequest(string $url, string $method, array $headers, ?string $data = null): array
 {
     $maxAttempts = 3;
@@ -201,6 +242,7 @@ function makeRequest(string $url, string $method, array $headers, ?string $data 
     $lastErrorMessage = 'Request failed';
     $lastHttpCode = 500;
     $lastData = [];
+    $lastCurlErrorNo = 0;
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
         $ch = curl_init();
@@ -224,6 +266,7 @@ function makeRequest(string $url, string $method, array $headers, ?string $data 
         $curlErrorNo = curl_errno($ch);
         $curlError = curl_error($ch);
         curl_close($ch);
+        $lastCurlErrorNo = $curlErrorNo;
 
         if ($response === false) {
             $lastErrorMessage = $curlError !== '' ? $curlError : 'Request failed';
@@ -250,12 +293,14 @@ function makeRequest(string $url, string $method, array $headers, ?string $data 
 
         return [
             'code' => $httpCode > 0 ? $httpCode : 500,
-            'data' => $decoded
+            'data' => $decoded,
+            'curl_errno' => $curlErrorNo
         ];
     }
 
     return [
         'code' => $lastHttpCode > 0 ? $lastHttpCode : 500,
-        'data' => $lastData ?: ['msg' => $lastErrorMessage]
+        'data' => $lastData ?: ['msg' => $lastErrorMessage],
+        'curl_errno' => $lastCurlErrorNo
     ];
 }

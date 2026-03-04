@@ -153,6 +153,10 @@ Status codes:
 
 Requires `apiKey`, `apiSecret`, `useTestnet`.
 
+Optional:
+
+- `recvWindow` (`1..60000`, default `5000`)
+
 ## `POST /crypto/backend/api.php?action=order`
 
 Requires:
@@ -161,13 +165,44 @@ Requires:
 - `symbol`, `side`, `type`, `quantity`
 - For LIMIT: `price`
 
+Optional:
+
+- `recvWindow` (`1..60000`, default `5000`)
+- `newClientOrderId` (regex `^[A-Za-z0-9._-]{1,36}$`; server auto-generates if omitted)
+
+Unknown execution contract:
+
+- If upstream timeout/transport ambiguity occurs, backend returns error envelope with:
+  - `data.recoverable = true`
+  - `data.clientOrderId`
+  - message instructing `order-status` verification.
+
 ## `POST /crypto/backend/api.php?action=orders`
 
 Requires `apiKey`, `apiSecret`, `useTestnet`; optional `symbol`.
 
+Optional:
+
+- `recvWindow` (`1..60000`, default `5000`)
+
 ## `POST /crypto/backend/api.php?action=cancel`
 
 Requires `apiKey`, `apiSecret`, `useTestnet`, `symbol`, `orderId`.
+
+Optional:
+
+- `recvWindow` (`1..60000`, default `5000`)
+
+## `POST /crypto/backend/api.php?action=order-status`
+
+Requires:
+
+- `apiKey`, `apiSecret`, `useTestnet`, `symbol`
+- one of: `orderId` or `origClientOrderId`
+
+Optional:
+
+- `recvWindow` (`1..60000`, default `5000`)
 
 ## `GET /crypto/backend/health.php`
 
