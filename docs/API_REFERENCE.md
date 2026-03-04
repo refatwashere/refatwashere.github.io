@@ -218,6 +218,38 @@ Optional:
 
 - `recvWindow` (`1..60000`, default `5000`)
 
+## `POST /crypto/backend/api.php?action=planner-intent`
+
+Advisory planner endpoint. Does not execute trades.
+
+Requires:
+
+- `symbol` (regex `^[A-Z0-9]{5,20}$`)
+- `side` (`BUY|SELL`)
+- `size` (numeric, `> 0`, `<= 100000000`)
+
+Optional:
+
+- `type` (`MARKET|LIMIT`, default `MARKET`)
+- `limitPrice` (numeric)
+- `marketPrice` (numeric)
+- `mode` (`spot|futures`, advisory context only)
+- `provider` (`local|sidecar`, default `local`)
+
+Success payload contracts:
+
+- `data.trade_intent`
+- `data.risk_assessment`
+- `data.execution_plan`
+- `data.meta`
+
+Status codes:
+
+- `200` advisory result returned
+- `401` unauthorized
+- `422` validation error
+- `502/503` sidecar unavailable (when `provider=sidecar`)
+
 ## `GET /crypto/backend/health.php`
 
 - Auth: none

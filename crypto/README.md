@@ -27,6 +27,7 @@ Canonical references:
 - Journal, alerts, watchlist, mock/real trading flows
 - Tokenized backend access and request envelope compatibility
 - Private-action timing controls (`recvWindow`) and `order-status` recovery checks
+- Optional planner advisory flow (`planner-intent`) behind feature flag (`planner_enabled`)
 
 ## Notes
 

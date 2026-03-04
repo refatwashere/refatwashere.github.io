@@ -200,6 +200,10 @@
                     <input type="password" id="backendApiToken" placeholder="Backend API Token (API_TOKEN_CRYPTO)" aria-label="Backend API token" autocomplete="off">
                     <input type="number" id="recvWindow" placeholder="recvWindow (ms, default 5000)" aria-label="Binance recvWindow in milliseconds" min="1" max="60000" step="1">
                     <label style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
+                        <input type="checkbox" id="plannerEnabled" aria-label="Enable planner advisories">
+                        <span>Enable Planner Advisories (Beta)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
                         <input type="checkbox" id="useTestnet" checked aria-label="Use testnet">
                         <span>Use Testnet (Recommended for testing)</span>
                     </label>

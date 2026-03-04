@@ -92,6 +92,7 @@ Actions requiring Binance credentials:
 Action not requiring Binance credentials:
 
 - `klines`
+- `planner-intent` (advisory only; no trade execution)
 
 All backend actions still require backend token (`X-API-Token`).
 
@@ -116,6 +117,18 @@ Integration boundary note:
 - App uses Binance REST/WebSocket HMAC credentials.
 - Binance FIX API (Ed25519) is not part of this runtime deployment.
 
+## Planner advisory layer
+
+- Frontend feature flag: `planner_enabled` (default off)
+- When enabled, spot order submission calls:
+  - `POST /crypto/backend/api.php?action=planner-intent`
+- Planner output is advisory only:
+  - confidence
+  - rationale
+  - risk flags
+  - assisted execution steps/deep-link
+- If planner call fails, UI shows warning and continues normal manual order flow.
+
 ## Local Storage Keys
 
 Examples used by app:
@@ -126,6 +139,7 @@ Examples used by app:
 - `binance_api_key`, `binance_api_secret`
 - `backend_api_token`, `use_testnet`
 - `binance_recv_window`
+- `planner_enabled`
 
 ## Error Handling and Compatibility
 

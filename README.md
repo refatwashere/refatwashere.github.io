@@ -49,6 +49,7 @@ Canonical documentation:
 - [Free/No-Card Deployment Options](docs/DEPLOYMENT_OPTIONS_FREE.md)
 - [Frontend Pages](docs/FRONTEND_PAGES.md)
 - [Crypto App](docs/CRYPTO_APP.md)
+- [AI Planner Architecture](docs/AI_PLANNER_ARCHITECTURE.md)
 - [Project Organization](docs/PROJECT_ORGANIZATION.md)
 - [Project Changelog](docs/CHANGELOG_PROJECT.md)
 

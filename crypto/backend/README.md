@@ -22,6 +22,7 @@ Canonical references:
 - `API_TOKEN` (temporary fallback)
 - `ALLOWED_ORIGINS`
 - `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` (required for 24-hour klines backup cache)
+- `PLANNER_SIDECAR_URL` (optional; used when `planner-intent` requests provider `sidecar`)
 
 ## Endpoints
 
@@ -38,6 +39,7 @@ Actions:
 - `action=orders`
 - `action=cancel`
 - `action=order-status`
+- `action=planner-intent`
 
 Readiness:
 
@@ -47,6 +49,7 @@ Readiness:
 
 - `klines`: does **not** require Binance `apiKey`/`apiSecret`
 - `account`, `order`, `orders`, `cancel`, `order-status`: require Binance `apiKey`/`apiSecret`
+- `planner-intent`: advisory only, no Binance API key/secret required
 
 Klines backup cache behavior:
 

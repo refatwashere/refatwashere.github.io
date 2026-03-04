@@ -56,6 +56,100 @@ function validateClientOrderId(string $clientOrderId): void
     }
 }
 
+function buildPlannerDeepLink(string $symbol): string
+{
+    if (preg_match('/^([A-Z0-9]{2,20})USDT$/', $symbol, $m) === 1) {
+        return 'https://www.binance.com/en/trade/' . rawurlencode($m[1] . '_USDT') . '?type=spot';
+    }
+    return 'https://www.binance.com/en/trade';
+}
+
+function buildLocalPlannerResult(array $plannerInput): array
+{
+    $symbol = strtoupper(trim((string) ($plannerInput['symbol'] ?? '')));
+    $side = strtoupper(trim((string) ($plannerInput['side'] ?? '')));
+    $size = (float) ($plannerInput['size'] ?? 0);
+    $type = strtoupper(trim((string) ($plannerInput['type'] ?? 'MARKET')));
+    $marketPrice = isset($plannerInput['marketPrice']) && is_numeric($plannerInput['marketPrice'])
+        ? (float) $plannerInput['marketPrice']
+        : null;
+    $limitPrice = isset($plannerInput['limitPrice']) && is_numeric($plannerInput['limitPrice'])
+        ? (float) $plannerInput['limitPrice']
+        : null;
+    $effectivePrice = $marketPrice ?? $limitPrice;
+
+    $riskFlags = [];
+    if ($size > 5) {
+        $riskFlags[] = 'size_large';
+    }
+    if ($effectivePrice !== null && ($size * $effectivePrice) > 5000) {
+        $riskFlags[] = 'notional_high';
+    }
+    if ($type === 'MARKET') {
+        $riskFlags[] = 'market_order_slippage';
+    }
+    if ($marketPrice === null && $limitPrice === null) {
+        $riskFlags[] = 'price_reference_missing';
+    }
+
+    $confidence = 0.62;
+    if ($marketPrice === null) {
+        $confidence -= 0.12;
+    }
+    if (in_array('size_large', $riskFlags, true)) {
+        $confidence -= 0.08;
+    }
+    if (in_array('notional_high', $riskFlags, true)) {
+        $confidence -= 0.05;
+    }
+    $confidence = max(0.05, min(0.95, $confidence));
+
+    $rationaleBits = [];
+    $rationaleBits[] = $side === 'BUY'
+        ? 'Entry intent is long-biased.'
+        : 'Entry intent is short/exit-biased.';
+    if ($effectivePrice !== null) {
+        $rationaleBits[] = 'Price reference is available for pre-trade sizing checks.';
+    } else {
+        $rationaleBits[] = 'No trusted price reference was supplied.';
+    }
+    if (count($riskFlags) > 0) {
+        $rationaleBits[] = 'Risk checks flagged: ' . implode(', ', $riskFlags) . '.';
+    } else {
+        $rationaleBits[] = 'No elevated heuristic risk flags.';
+    }
+
+    return [
+        'trade_intent' => [
+            'symbol' => $symbol,
+            'side' => $side,
+            'size' => $size,
+            'confidence' => round($confidence, 2),
+            'rationale' => implode(' ', $rationaleBits),
+            'risk_flags' => $riskFlags
+        ],
+        'risk_assessment' => [
+            'score' => round((1 - $confidence) * 100),
+            'level' => $confidence >= 0.7 ? 'low' : ($confidence >= 0.5 ? 'medium' : 'high'),
+            'flags' => $riskFlags
+        ],
+        'execution_plan' => [
+            'mode' => 'assisted',
+            'steps' => [
+                'Review symbol, side, and size against your strategy.',
+                'Confirm risk flags and set stop-loss/take-profit levels.',
+                'Place order manually after verification.',
+                'Re-check fill status and adjust risk management.'
+            ],
+            'deep_link' => buildPlannerDeepLink($symbol)
+        ],
+        'meta' => [
+            'source' => 'local_heuristic',
+            'planner_version' => '1.0.0'
+        ]
+    ];
+}
+
 $CACHE_SYMBOLS = ['BTCUSDT', 'BNBUSDT', 'ETHUSDT', 'DOGEUSDT'];
 
 function isCacheEligibleSymbol(string $symbol): bool
@@ -374,6 +468,83 @@ switch ($action) {
         $signature = signRequest($queryString, $apiSecret);
         $url = "$baseURL/api/v3/order?$queryString&signature=$signature";
         $result = makeRequest($url, 'GET', ["X-MBX-APIKEY: $apiKey"]);
+        break;
+
+    case 'planner-intent':
+        $symbol = strtoupper(trim((string) ($input['symbol'] ?? '')));
+        $side = strtoupper(trim((string) ($input['side'] ?? '')));
+        $size = $input['size'] ?? null;
+        $type = strtoupper(trim((string) ($input['type'] ?? 'MARKET')));
+        $provider = strtolower(trim((string) ($input['provider'] ?? 'local')));
+        $allowedTypes = ['MARKET', 'LIMIT'];
+
+        if ($symbol === '' || preg_match('/^[A-Z0-9]{5,20}$/', $symbol) !== 1) {
+            errorResponse('Invalid symbol format', 422);
+        }
+        if (!in_array($side, ['BUY', 'SELL'], true)) {
+            errorResponse('Invalid side', 422, ['allowed_values' => ['BUY', 'SELL']]);
+        }
+        if (!is_numeric($size) || (float) $size <= 0 || (float) $size > 100000000) {
+            errorResponse('Invalid size', 422);
+        }
+        if (!in_array($type, $allowedTypes, true)) {
+            errorResponse('Invalid type', 422, ['allowed_values' => $allowedTypes]);
+        }
+        if ($provider !== 'local' && $provider !== 'sidecar') {
+            errorResponse('Invalid provider', 422, ['allowed_values' => ['local', 'sidecar']]);
+        }
+
+        if ($provider === 'sidecar') {
+            $sidecarUrl = trim((string) getEnvValue('PLANNER_SIDECAR_URL', ''));
+            if ($sidecarUrl === '') {
+                errorResponse('Planner sidecar unavailable', 503, ['source' => 'planner_sidecar']);
+            }
+
+            $sidecarPayload = [
+                'symbol' => $symbol,
+                'side' => $side,
+                'size' => (float) $size,
+                'type' => $type,
+                'limitPrice' => $input['limitPrice'] ?? null,
+                'marketPrice' => $input['marketPrice'] ?? null,
+                'mode' => $input['mode'] ?? 'spot'
+            ];
+            $sidecarResult = makeRequest(
+                $sidecarUrl,
+                'POST',
+                ['Content-Type: application/json', 'X-Request-Id: ' . getRequestId()],
+                json_encode($sidecarPayload, JSON_UNESCAPED_SLASHES),
+                ['maxAttempts' => 1, 'connectTimeout' => 3, 'timeout' => 5]
+            );
+
+            $sidecarStatus = (int) ($sidecarResult['code'] ?? 500);
+            $sidecarBody = is_array($sidecarResult['data'] ?? null) ? $sidecarResult['data'] : [];
+            if ($sidecarStatus >= 400) {
+                errorResponse(
+                    'Planner sidecar unavailable',
+                    502,
+                    [
+                        'source' => 'planner_sidecar',
+                        'upstream_code' => $sidecarStatus,
+                        'upstream_errno' => (int) ($sidecarResult['curl_errno'] ?? 0)
+                    ]
+                );
+            }
+
+            if (isset($sidecarBody['data']) && is_array($sidecarBody['data'])) {
+                $sidecarBody = $sidecarBody['data'];
+            }
+            if (!isset($sidecarBody['trade_intent']) || !is_array($sidecarBody['trade_intent'])) {
+                errorResponse('Planner sidecar response invalid', 502, ['source' => 'planner_sidecar']);
+            }
+            if (!isset($sidecarBody['meta']) || !is_array($sidecarBody['meta'])) {
+                $sidecarBody['meta'] = [];
+            }
+            $sidecarBody['meta']['source'] = 'sidecar';
+            successResponse($sidecarBody);
+        }
+
+        successResponse(buildLocalPlannerResult($input));
         break;
 
     default:

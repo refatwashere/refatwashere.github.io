@@ -196,6 +196,16 @@ if (-not $SkipNegativeTests) {
     Assert (($r.StatusCode -eq 504) -or ($r.StatusCode -eq 502)) "Expected unknown-status envelope status code 504/502, got $($r.StatusCode)"
     Assert ($r.Json.data.recoverable -eq $true) "Expected recoverable=true for unknown-status envelope"
     Assert ($r.Json.data.clientOrderId) "Expected clientOrderId in unknown-status envelope"
+
+    Write-Step "B9: planner-intent invalid payload should be 422 with request_id"
+    $r = Invoke-Check -Method POST -Url "$cryptoApi?action=planner-intent" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{
+        symbol = "BTCUSDT"
+        side = "BUY"
+        size = 0
+        type = "MARKET"
+    }
+    Assert ($r.StatusCode -eq 422) "Expected 422 for planner-intent invalid size, got $($r.StatusCode)"
+    Assert ($r.Json.request_id) "Expected request_id in planner-intent validation error"
 }
 
 Write-Step "C1: /api correct legacy token should be 200"
@@ -235,6 +245,21 @@ if ($r.StatusCode -eq 200) {
     Assert ($r.Json.upstream_code) "Expected upstream_code for klines upstream failure"
     Assert ($r.Json.source -eq "binance_klines") "Expected source=binance_klines for klines upstream failure"
 }
+
+Write-Step "C6: planner-intent with token should return advisory contracts"
+$r = Invoke-Check -Method POST -Url "$cryptoApi?action=planner-intent" -Headers @{ "X-API-Token" = $CryptoToken } -Body @{
+    symbol = "BTCUSDT"
+    side = "BUY"
+    size = 0.01
+    type = "MARKET"
+    marketPrice = 50000
+    mode = "spot"
+}
+Assert ($r.StatusCode -eq 200) "Expected 200 for planner-intent, got $($r.StatusCode)"
+Assert (Is-SuccessResponse -Json $r.Json) "Expected success response for planner-intent"
+Assert ($r.Json.data.trade_intent.symbol -eq "BTCUSDT") "Expected trade_intent.symbol in planner response"
+Assert ($null -ne $r.Json.data.trade_intent.confidence) "Expected trade_intent.confidence in planner response"
+Assert ($r.Json.data.execution_plan.mode -eq "assisted") "Expected execution_plan.mode=assisted"
 
 if (-not $SkipReadinessChecks) {
     Write-Step "D1: readiness checks should return 200 when env vars are configured"

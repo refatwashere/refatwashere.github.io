@@ -24,6 +24,10 @@ Compatibility fallback:
 
 - `API_TOKEN` (temporary only)
 
+Optional:
+
+- `PLANNER_SIDECAR_URL` (used only when planner requests `provider=sidecar`)
+
 ## Crypto backend (`/crypto/backend/*`)
 
 Required:
@@ -62,6 +66,7 @@ In `crypto/crypto.html` settings:
 - Configure Binance REST API key/secret if using account/order actions
 - Keep testnet enabled for safe validation
 - Set `recvWindow` (default `5000`)
+- Set `Enable Planner Advisories (Beta)` only if advisory prompts are desired
 - FIX API (Ed25519) is not used by this deployment path
 
 ## Smoke Test Commands
@@ -98,6 +103,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_test.ps1 `
 - Crypto `klines` positive and negative checks
 - Crypto private-action `recvWindow` validation checks
 - Crypto `order-status` checks
+- Crypto `planner-intent` validation and success checks
 - Crypto chart state labels include `Loading`, `Proxy`, `Degraded`, `Fallback`, `Unavailable`
 - Readiness endpoint checks
 - Frontend critical page and resource checks

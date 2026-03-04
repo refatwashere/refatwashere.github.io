@@ -608,6 +608,57 @@ class CryptoApp {
     return { ...this.getApiCredentials(), ...extra };
   }
 
+  isPlannerEnabled() {
+    return localStorage.getItem('planner_enabled') === 'true';
+  }
+
+  buildPlannerIntentPayload(order) {
+    const marketPrice = Number(this.state.cryptoPrices?.[order.symbol]?.price);
+    return {
+      symbol: String(order.symbol || '').toUpperCase(),
+      side: String(order.side || '').toUpperCase(),
+      size: Number(order.quantity),
+      type: String(order.type || 'MARKET').toUpperCase(),
+      limitPrice: Number(order.price),
+      marketPrice: Number.isFinite(marketPrice) ? marketPrice : null,
+      mode: this.state.tradingMode === 'futures' ? 'futures' : 'spot'
+    };
+  }
+
+  async requestPlannerIntent(order) {
+    if (!this.isPlannerEnabled()) return null;
+    try {
+      const response = await this.fetchWithTimeout(
+        'backend/api.php?action=planner-intent',
+        this.getBackendRequestOptions(this.buildPlannerIntentPayload(order)),
+        5000
+      );
+      const result = await response.json();
+      if (!response.ok || !this.isSuccess(result) || !result?.data) {
+        return {
+          ok: false,
+          message: this.getApiErrorMessage(result, `Planner unavailable (${response.status})`)
+        };
+      }
+      return { ok: true, data: result.data };
+    } catch (error) {
+      console.error('Planner intent error:', error);
+      return { ok: false, message: 'Planner unavailable' };
+    }
+  }
+
+  showPlannerAdvice(plannerResult) {
+    if (!plannerResult || !plannerResult.ok || !plannerResult.data) return;
+    const intent = plannerResult.data.trade_intent || {};
+    const confidenceRaw = Number(intent.confidence);
+    const confidencePct = Number.isFinite(confidenceRaw) ? Math.round(confidenceRaw * 100) : null;
+    const riskFlags = Array.isArray(intent.risk_flags) ? intent.risk_flags.filter(Boolean) : [];
+    const confidenceText = confidencePct !== null ? `${confidencePct}%` : 'n/a';
+    const riskText = riskFlags.length > 0 ? ` Risks: ${riskFlags.join(', ')}` : '';
+    const rationale = intent.rationale ? ` ${intent.rationale}` : '';
+    this.showNotification(`Planner advisory (${confidenceText}).${rationale}${riskText}`);
+  }
+
   generateClientOrderId(symbol = 'ORD') {
     const clean = String(symbol || 'ORD').replace(/[^A-Za-z0-9]/g, '').slice(0, 8) || 'ORD';
     const ts = Date.now();
@@ -1805,6 +1856,13 @@ class CryptoApp {
           return;
         }
 
+        const plannerResult = await this.requestPlannerIntent(order);
+        if (plannerResult && plannerResult.ok) {
+          this.showPlannerAdvice(plannerResult);
+        } else if (plannerResult && !plannerResult.ok) {
+          this.showNotification(`${plannerResult.message}. Continuing manual order flow.`);
+        }
+
         const clientOrderId = this.generateClientOrderId(symbol);
         const credentials = this.getApiCredentials();
         const response = await fetch(
@@ -2260,15 +2318,18 @@ class CryptoApp {
     const backendApiToken = localStorage.getItem('backend_api_token') || '';
     const useTestnet = localStorage.getItem('use_testnet') !== 'false';
     const recvWindow = localStorage.getItem('binance_recv_window') || '5000';
+    const plannerEnabled = localStorage.getItem('planner_enabled') === 'true';
     
     const apiKeyEl = document.getElementById('apiKey');
     const backendTokenEl = document.getElementById('backendApiToken');
     const testnetEl = document.getElementById('useTestnet');
     const recvWindowEl = document.getElementById('recvWindow');
+    const plannerEnabledEl = document.getElementById('plannerEnabled');
     if (apiKeyEl) apiKeyEl.value = apiKey;
     if (backendTokenEl) backendTokenEl.value = backendApiToken;
     if (testnetEl) testnetEl.checked = useTestnet;
     if (recvWindowEl) recvWindowEl.value = recvWindow;
+    if (plannerEnabledEl) plannerEnabledEl.checked = plannerEnabled;
   }
   
   saveSettings() {
@@ -2276,6 +2337,7 @@ class CryptoApp {
     const apiSecret = document.getElementById('apiSecret').value.trim();
     const backendApiToken = document.getElementById('backendApiToken')?.value.trim() || '';
     const useTestnet = document.getElementById('useTestnet').checked;
+    const plannerEnabled = document.getElementById('plannerEnabled')?.checked === true;
     const recvWindowInput = document.getElementById('recvWindow')?.value.trim() || '5000';
     const recvWindow = Number(recvWindowInput);
     const normalizedRecvWindow = Number.isFinite(recvWindow)
@@ -2287,6 +2349,7 @@ class CryptoApp {
     localStorage.setItem('backend_api_token', backendApiToken);
     localStorage.setItem('use_testnet', useTestnet.toString());
     localStorage.setItem('binance_recv_window', String(normalizedRecvWindow));
+    localStorage.setItem('planner_enabled', plannerEnabled ? 'true' : 'false');
     
     this.showNotification('Settings saved successfully!');
     this.closeModal('settingsModal');
@@ -2298,13 +2361,16 @@ class CryptoApp {
     localStorage.removeItem('backend_api_token');
     localStorage.removeItem('use_testnet');
     localStorage.removeItem('binance_recv_window');
+    localStorage.removeItem('planner_enabled');
     
     document.getElementById('apiKey').value = '';
     document.getElementById('apiSecret').value = '';
     const backendTokenEl = document.getElementById('backendApiToken');
     const recvWindowEl = document.getElementById('recvWindow');
+    const plannerEnabledEl = document.getElementById('plannerEnabled');
     if (backendTokenEl) backendTokenEl.value = '';
     if (recvWindowEl) recvWindowEl.value = '5000';
+    if (plannerEnabledEl) plannerEnabledEl.checked = false;
     document.getElementById('useTestnet').checked = true;
     
     this.showNotification('Settings cleared');
