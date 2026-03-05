@@ -1,0 +1,18 @@
+{
+  "name": "crypto-sidecar-vercel",
+  "version": "2.0.0",
+  "description": "Enhanced crypto sidecar service deployed as Vercel serverless functions",
+  "main": "api/health.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "start": "vercel dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "keywords": ["crypto", "trading", "sidecar", "pancakeswap", "binance", "vercel", "serverless"],
+  "author": "Crypto App Team",
+  "license": "MIT"
+}
